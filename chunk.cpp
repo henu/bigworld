@@ -4,6 +4,8 @@
 
 #include <Urho3D/Scene/Scene.h>
 
+#include <stdexcept>
+
 namespace BigWorld
 {
 
@@ -26,6 +28,24 @@ node(NULL)
 	corners.Resize(area, default_corner);
 
 	baseheight = 0;
+}
+
+Chunk::Chunk(ChunkWorld* world, Corners const& corners) :
+Urho3D::Object(world->GetContext()),
+world(world),
+corners(corners),
+node(NULL)
+{
+	if (corners.Size() != world->getChunkWidth() * world->getChunkWidth()) {
+		throw std::runtime_error("Array of corners has invalid size!");
+	}
+	// Use average height as baseheight
+	unsigned long average_height = 0;
+	for (Corners::ConstIterator it = corners.Begin(); it != corners.End(); ++ it) {
+		average_height += it->height;
+	}
+	average_height /= corners.Size();
+	baseheight = average_height;
 }
 
 void Chunk::setLod(ChunkLod const& lod, Urho3D::Model* model)

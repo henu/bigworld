@@ -20,6 +20,7 @@ public:
 
 	Chunk();
 	Chunk(ChunkWorld* world);
+	Chunk(ChunkWorld* world, Corners const& corners);
 
 	inline unsigned getBaseheight() const { return baseheight; }
 

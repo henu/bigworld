@@ -229,11 +229,11 @@ void ChunkWorld::extractCornersData(Corners& result, Urho3D::IntVector2 const& p
 	Chunk* chk = chunks[pos];
 	Chunk* chk_s = chunks[pos + Urho3D::IntVector2(0, -1)];
 	Chunk* chk_se = chunks[pos + Urho3D::IntVector2(1, -1)];
-	Chunk* chk_e = chunks[pos + Urho3D::IntVector2(1, 1)];
-	Chunk* chk_ne = chunks[pos + Urho3D::IntVector2(0, 1)];
-	Chunk* chk_n = chunks[pos + Urho3D::IntVector2(-1, 1)];
-	Chunk* chk_nw = chunks[pos + Urho3D::IntVector2(-1, 0)];
-	Chunk* chk_w = chunks[pos + Urho3D::IntVector2(-1, -1)];
+	Chunk* chk_e = chunks[pos + Urho3D::IntVector2(1, 0)];
+	Chunk* chk_ne = chunks[pos + Urho3D::IntVector2(1, 1)];
+	Chunk* chk_n = chunks[pos + Urho3D::IntVector2(0, 1)];
+	Chunk* chk_nw = chunks[pos + Urho3D::IntVector2(-1, 1)];
+	Chunk* chk_w = chunks[pos + Urho3D::IntVector2(-1, 0)];
 
 	// One extra for position data, and two more
 	// to calculate neighbor positions for normal.

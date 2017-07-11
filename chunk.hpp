@@ -1,10 +1,12 @@
 #ifndef BIGWORLD_CHUNK_HPP
 #define BIGWORLD_CHUNK_HPP
 
-#include <Urho3D/Core/Object.h>
-#include <Urho3D/Container/Vector.h>
+#include "types.hpp"
 
-#include <cstdint>
+#include <Urho3D/Container/HashMap.h>
+#include <Urho3D/Core/Object.h>
+#include <Urho3D/Graphics/Model.h>
+#include <Urho3D/Graphics/StaticModel.h>
 
 namespace BigWorld
 {
@@ -19,22 +21,35 @@ public:
 	Chunk();
 	Chunk(ChunkWorld* world);
 
+	inline unsigned getBaseheight() const { return baseheight; }
+
+	inline bool hasLod(ChunkLod const& lod) const { return lods.Contains(lod); }
+
+	void setLod(ChunkLod const& lod, Urho3D::Model* model);
+
+	// Shows/hides Chunks
+	void show(Urho3D::Scene* scene, Urho3D::IntVector2 const& rel_pos, unsigned rel_height, ChunkLod lod);
+	void hide();
+
+	void copyCornerRow(Corners& result, unsigned x, unsigned y, unsigned size);
+
 private:
 
-	typedef Urho3D::HashMap<uint8_t, float> TTypesByWeight;
-
-	struct Corner
-	{
-		uint16_t height;
-		TTypesByWeight ttypes;
-	};
+	typedef Urho3D::HashMap<ChunkLod, Urho3D::SharedPtr<Urho3D::Model> > Lods;
 
 	ChunkWorld* world;
 
-	Urho3D::Vector<Corner> corners;
+	Corners corners;
+
+	unsigned baseheight;
+
+	Lods lods;
+
+	// Scene Node and Model, if currently visible
+	Urho3D::Node* node;
+	Urho3D::SharedPtr<Urho3D::StaticModel> visible_model;
 };
 
 }
 
 #endif
-

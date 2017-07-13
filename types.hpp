@@ -72,6 +72,27 @@ struct ChunkPosAndLod
 
 typedef Urho3D::HashMap<Urho3D::IntVector2, ChunkLod> ViewArea;
 typedef Urho3D::HashMap<uint8_t, float> TTypesByWeight;
+typedef Urho3D::PODVector<uint8_t> TTypes;
+
+struct HashedTTypes
+{
+	TTypes ttypes;
+
+	inline bool operator==(HashedTTypes const& other) const
+	{
+		return ttypes == other.ttypes;
+	}
+
+	inline unsigned ToHash() const
+	{
+		unsigned hash = ttypes.Size();
+		for (TTypes::ConstIterator i = ttypes.Begin(); i != ttypes.End(); ++ i) {
+			hash *= 31;
+			hash += *i;
+		}
+		return hash;
+	}
+};
 
 struct Corner
 {
@@ -96,6 +117,7 @@ struct LodBuildingTaskData : public Urho3D::RefCounted
 	Urho3D::PODVector<Urho3D::VertexElement> vrts_elems;
 	Urho3D::PODVector<uint32_t> idxs_data;
 	Urho3D::BoundingBox boundingbox;
+	Urho3D::PODVector<uint8_t> used_ttypes;
 };
 
 

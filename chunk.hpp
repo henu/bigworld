@@ -5,6 +5,7 @@
 
 #include <Urho3D/Container/HashMap.h>
 #include <Urho3D/Core/Object.h>
+#include <Urho3D/Graphics/Material.h>
 #include <Urho3D/Graphics/Model.h>
 #include <Urho3D/Graphics/StaticModel.h>
 
@@ -26,7 +27,7 @@ public:
 
 	inline bool hasLod(ChunkLod const& lod) const { return lods.Contains(lod); }
 
-	void setLod(ChunkLod const& lod, Urho3D::Model* model);
+	void setLod(ChunkLod const& lod, Urho3D::Model* model, Urho3D::Material* mat);
 
 	// Shows/hides Chunks
 	void show(Urho3D::Scene* scene, Urho3D::IntVector2 const& rel_pos, unsigned rel_height, ChunkLod lod);
@@ -36,7 +37,13 @@ public:
 
 private:
 
-	typedef Urho3D::HashMap<ChunkLod, Urho3D::SharedPtr<Urho3D::Model> > Lods;
+	struct Lod
+	{
+		Urho3D::SharedPtr<Urho3D::Model> model;
+		Urho3D::SharedPtr<Urho3D::Material> mat;
+	};
+
+	typedef Urho3D::HashMap<ChunkLod, Lod> Lods;
 
 	ChunkWorld* world;
 

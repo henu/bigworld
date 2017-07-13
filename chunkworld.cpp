@@ -8,6 +8,8 @@
 #include <Urho3D/Graphics/IndexBuffer.h>
 #include <Urho3D/Graphics/Model.h>
 #include <Urho3D/Graphics/VertexBuffer.h>
+#include <Urho3D/Graphics/Texture2D.h>
+#include <Urho3D/Resource/ResourceCache.h>
 
 #include <stdexcept>
 
@@ -55,54 +57,95 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 	(void)eventType;
 	(void)eventData;
 
+	Urho3D::ResourceCache* resources = GetSubsystem<Urho3D::ResourceCache>();
+
 	// If there are tasks, check if they have become ready
 	for (Tasks::Iterator tasks_it = tasks.Begin(); tasks_it != tasks.End();) {
 		Task& task = tasks_it->second_;
 		if (task.workitem->completed_) {
 
-			// Convert raw data from task to real VertexBuffer
-			Urho3D::SharedPtr<Urho3D::VertexBuffer> new_vb(new Urho3D::VertexBuffer(context_));
-			if (!new_vb->SetSize(task.data->vrts_data.Size() / Urho3D::VertexBuffer::GetVertexSize(task.data->vrts_elems), task.data->vrts_elems)) {
-				throw std::runtime_error("Unable to set VertexBuffer size!");
-			}
-			if (!new_vb->SetData((void*)task.data->vrts_data.Buffer())) {
-				throw std::runtime_error("Unable to set VertexBuffer data!");
+			// Before constructing the Model, make sure material is loaded
+			LodBuildingTaskData* task_data = (LodBuildingTaskData*)task.workitem->aux_;
+			HashedTTypes used_ttypes;
+			used_ttypes.ttypes = task_data->used_ttypes;
+			if (mats_cache.Contains(used_ttypes)) {
+				Urho3D::Material* mat = mats_cache[used_ttypes];
+
+				// Convert raw data from task to real VertexBuffer
+				Urho3D::SharedPtr<Urho3D::VertexBuffer> new_vb(new Urho3D::VertexBuffer(context_));
+				if (!new_vb->SetSize(task.data->vrts_data.Size() / Urho3D::VertexBuffer::GetVertexSize(task.data->vrts_elems), task.data->vrts_elems)) {
+					throw std::runtime_error("Unable to set VertexBuffer size!");
+				}
+				if (!new_vb->SetData((void*)task.data->vrts_data.Buffer())) {
+					throw std::runtime_error("Unable to set VertexBuffer data!");
+				}
+
+				// Convert raw data from task to real IndexBuffer
+				Urho3D::SharedPtr<Urho3D::IndexBuffer> new_ib(new Urho3D::IndexBuffer(context_));
+				if (!new_ib->SetSize(task.data->idxs_data.Size(), true)) {
+					throw std::runtime_error("Unable to set IndexBuffer size!");
+				}
+				if (!new_ib->SetData((void*)task.data->idxs_data.Buffer())) {
+					throw std::runtime_error("Unable to set IndexBuffer data!");
+				}
+
+				// Create new geometry
+				Urho3D::SharedPtr<Urho3D::Geometry> new_geom(new Urho3D::Geometry(context_));
+				if (!new_geom->SetVertexBuffer(0, new_vb)) {
+					throw std::runtime_error("Unable to set Geometry VertexBuffer!");
+				}
+				new_geom->SetIndexBuffer(new_ib);
+				if (!new_geom->SetDrawRange(Urho3D::TRIANGLE_LIST, 0, task.data->idxs_data.Size(), false)) {
+					throw std::runtime_error("Unable to set Geometry draw range!");
+				}
+
+				// Create model the data from task
+				Urho3D::SharedPtr<Urho3D::Model> new_model(new Urho3D::Model(context_));
+				new_model->SetNumGeometries(1);
+				if (!new_model->SetNumGeometryLodLevels(0, 1)) {
+					throw std::runtime_error("Unable to set number of lod levels of Model!");
+				}
+				if (!new_model->SetGeometry(0, 0, new_geom)) {
+					throw std::runtime_error("Unable to set Model Geometry!");
+				}
+				new_model->SetBoundingBox(task.data->boundingbox);
+
+				Chunk* chunk = chunks[tasks_it->first_.pos];
+				chunk->setLod(task.data->lod, new_model, mat);
+
+				tasks_it = tasks.Erase(tasks_it);
+
+			} else {
+				// Material is not loaded, so try to construct
+				// it. First textures for it are needed.
+				Urho3D::Vector<Urho3D::SharedPtr<Urho3D::Texture2D> > texs;
+				for (unsigned i = 0; i < used_ttypes.ttypes.Size(); ++ i) {
+					uint8_t ttype = used_ttypes.ttypes[i];
+					Urho3D::String const& tex_name = texs_names[ttype];
+					Urho3D::SharedPtr<Urho3D::Texture2D> tex(resources->GetExistingResource<Urho3D::Texture2D>(tex_name));
+					if (tex.Null()) {
+						// Texture was not loaded, so start loading it.
+						resources->BackgroundLoadResource<Urho3D::Texture2D>(tex_name);
+					} else {
+						texs.Push(tex);
+					}
+				}
+
+				// If texture vector has full size, then it means
+				// all textures were loaded. Now create material.
+				if (texs.Size() == used_ttypes.ttypes.Size()) {
+// TODO: Support multi texture materials!
+assert(texs.Size() == 1);
+					Urho3D::SharedPtr<Urho3D::Material> mat = resources->GetResource<Urho3D::Material>("Materials/Terrain/Layers " + Urho3D::String(texs.Size()) + ".xml")->Clone();
+					for (unsigned layer = 0; layer < texs.Size(); ++ layer) {
+						mat->SetTexture((Urho3D::TextureUnit)layer, texs[layer]);
+					}
+					mats_cache[used_ttypes] = mat;
+				}
+
+				++ tasks_it;
 			}
 
-			// Convert raw data from task to real IndexBuffer
-			Urho3D::SharedPtr<Urho3D::IndexBuffer> new_ib(new Urho3D::IndexBuffer(context_));
-			if (!new_ib->SetSize(task.data->idxs_data.Size(), true)) {
-				throw std::runtime_error("Unable to set IndexBuffer size!");
-			}
-			if (!new_ib->SetData((void*)task.data->idxs_data.Buffer())) {
-				throw std::runtime_error("Unable to set IndexBuffer data!");
-			}
-
-			// Create new geometry
-			Urho3D::SharedPtr<Urho3D::Geometry> new_geom(new Urho3D::Geometry(context_));
-			if (!new_geom->SetVertexBuffer(0, new_vb)) {
-				throw std::runtime_error("Unable to set Geometry VertexBuffer!");
-			}
-			new_geom->SetIndexBuffer(new_ib);
-			if (!new_geom->SetDrawRange(Urho3D::TRIANGLE_LIST, 0, task.data->idxs_data.Size(), false)) {
-				throw std::runtime_error("Unable to set Geometry draw range!");
-			}
-
-			// Create model the data from task
-			Urho3D::SharedPtr<Urho3D::Model> new_model(new Urho3D::Model(context_));
-			new_model->SetNumGeometries(1);
-			if (!new_model->SetNumGeometryLodLevels(0, 1)) {
-				throw std::runtime_error("Unable to set number of lod levels of Model!");
-			}
-			if (!new_model->SetGeometry(0, 0, new_geom)) {
-				throw std::runtime_error("Unable to set Model Geometry!");
-			}
-			new_model->SetBoundingBox(task.data->boundingbox);
-
-			Chunk* chunk = chunks[tasks_it->first_.pos];
-			chunk->setLod(task.data->lod, new_model);
-
-			tasks_it = tasks.Erase(tasks_it);
 		} else {
 			++ tasks_it;
 		}

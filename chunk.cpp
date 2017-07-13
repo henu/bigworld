@@ -39,18 +39,24 @@ node(NULL)
 	if (corners.Size() != world->getChunkWidth() * world->getChunkWidth()) {
 		throw std::runtime_error("Array of corners has invalid size!");
 	}
-	// Use average height as baseheight
+	// Use average height as baseheight. Also check validity of corners
 	unsigned long average_height = 0;
 	for (Corners::ConstIterator it = corners.Begin(); it != corners.End(); ++ it) {
 		average_height += it->height;
+		if (it->ttypes.Empty()) {
+			throw std::runtime_error("Every corner of Chunk must have at least one terraintype!");
+		}
 	}
 	average_height /= corners.Size();
 	baseheight = average_height;
 }
 
-void Chunk::setLod(ChunkLod const& lod, Urho3D::Model* model)
+void Chunk::setLod(ChunkLod const& lod, Urho3D::Model* model, Urho3D::Material* mat)
 {
-	lods[lod] = model;
+	Lod new_lod;
+	new_lod.model = model;
+	new_lod.mat = mat;
+	lods[lod] = new_lod;
 }
 
 void Chunk::show(Urho3D::Scene* scene, Urho3D::IntVector2 const& rel_pos, unsigned rel_height, ChunkLod lod)
@@ -66,7 +72,8 @@ void Chunk::show(Urho3D::Scene* scene, Urho3D::IntVector2 const& rel_pos, unsign
 	));
 
 	visible_model = node->CreateComponent<Urho3D::StaticModel>();
-	visible_model->SetModel(lods[lod]);
+	visible_model->SetModel(lods[lod].model);
+	visible_model->SetMaterial(lods[lod].mat);
 }
 
 void Chunk::hide()

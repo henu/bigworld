@@ -8,6 +8,7 @@
 #include <Urho3D/Container/Ptr.h>
 #include <Urho3D/Container/Vector.h>
 #include <Urho3D/Core/WorkQueue.h>
+#include <Urho3D/Graphics/Material.h>
 #include <Urho3D/Math/Vector2.h>
 
 namespace BigWorld
@@ -33,6 +34,7 @@ public:
 
 private:
 
+	typedef Urho3D::HashMap<HashedTTypes, Urho3D::SharedPtr<Urho3D::Material> > MaterialsCache;
 	typedef Urho3D::HashMap<Urho3D::IntVector2, Urho3D::SharedPtr<Chunk> > Chunks;
 
 	struct Task
@@ -47,6 +49,8 @@ private:
 	float const sqr_width;
 	float const heightstep;
 	Urho3D::Vector<Urho3D::String> texs_names;
+
+	MaterialsCache mats_cache;
 
 	Urho3D::Scene* scene;
 

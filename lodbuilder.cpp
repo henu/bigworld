@@ -5,19 +5,20 @@
 namespace BigWorld
 {
 
+float getTerraintypeWeight(TTypesByWeight const& weights, uint8_t ttype)
+{
+	TTypesByWeight::ConstIterator weights_find = weights.Find(ttype);
+	if (weights_find != weights.End()) {
+		return weights_find->second_;
+	}
+	return 0;
+}
+
 void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 {
 	(void)threadIndex;
 
 	LodBuildingTaskData* data = (LodBuildingTaskData*)item->aux_;
-
-// TODO: Support other LODs too!
-
-	// Set up elements
-	data->vrts_elems.Push(Urho3D::VertexElement(Urho3D::TYPE_VECTOR3, Urho3D::SEM_POSITION));
-	data->vrts_elems.Push(Urho3D::VertexElement(Urho3D::TYPE_VECTOR3, Urho3D::SEM_NORMAL));
-	data->vrts_elems.Push(Urho3D::VertexElement(Urho3D::TYPE_VECTOR2, Urho3D::SEM_TEXCOORD));
-// TODO: Support terrain data!
 
 	// Precalculate some stuff
 	unsigned const CHUNK_W = data->chunk_width;
@@ -26,6 +27,54 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 	float const CHUNK_WF = data->chunk_width * data->sqr_width;
 	unsigned const V2_SIZE = sizeof(float) * 2;
 	unsigned const V3_SIZE = sizeof(float) * 3;
+	unsigned const V4_SIZE = sizeof(float) * 3;
+
+	// Calculate what terrains are used and how much. Rarest of them might need ignoring.
+	TTypesByWeight used_ttypes;
+	for (unsigned y = 0; y < CHUNK_W1; ++ y) {
+		unsigned ofs = 1 + (y + 1) * (CHUNK_W3);
+		for (unsigned x = 0; x < CHUNK_W1; ++ x) {
+			Corner const& corner = data->corners[ofs];
+			for (TTypesByWeight::ConstIterator ttype_it = corner.ttypes.Begin(); ttype_it != corner.ttypes.End(); ++ ttype_it) {
+				if (!used_ttypes.Contains(ttype_it->first_)) {
+					used_ttypes[ttype_it->first_] = 0;
+				}
+				used_ttypes[ttype_it->first_] += ttype_it->second_;
+			}
+		}
+	}
+	// Ignore rarest ttypes if there are more than four different types
+	while (used_ttypes.Size() > 4) {
+		float lowest_usage = 9999999;
+		unsigned lowest_usage_ttype = 0;
+		for (TTypesByWeight::Iterator it = used_ttypes.Begin(); it != used_ttypes.End(); ++ it) {
+			if (it->second_ < lowest_usage) {
+				lowest_usage = it->second_;
+				lowest_usage_ttype = it->first_;
+			}
+		}
+		used_ttypes.Erase(lowest_usage_ttype);
+	}
+	assert(data->used_ttypes.Empty());
+	data->used_ttypes.Reserve(used_ttypes.Size());
+	for (TTypesByWeight::Iterator i = used_ttypes.Begin(); i != used_ttypes.End(); ++ i) {
+		data->used_ttypes.Push(i->first_);
+	}
+	assert(!data->used_ttypes.Empty());
+
+// TODO: Support other LODs too!
+
+	// Set up elements
+	data->vrts_elems.Push(Urho3D::VertexElement(Urho3D::TYPE_VECTOR3, Urho3D::SEM_POSITION));
+	data->vrts_elems.Push(Urho3D::VertexElement(Urho3D::TYPE_VECTOR3, Urho3D::SEM_NORMAL));
+	data->vrts_elems.Push(Urho3D::VertexElement(Urho3D::TYPE_VECTOR2, Urho3D::SEM_TEXCOORD));
+	if (used_ttypes.Size() == 2) {
+		data->vrts_elems.Push(Urho3D::VertexElement(Urho3D::TYPE_VECTOR2, Urho3D::SEM_TEXCOORD, 1));
+	} else if (used_ttypes.Size() == 3) {
+		data->vrts_elems.Push(Urho3D::VertexElement(Urho3D::TYPE_VECTOR3, Urho3D::SEM_TEXCOORD, 1));
+	} else if (used_ttypes.Size() == 4) {
+		data->vrts_elems.Push(Urho3D::VertexElement(Urho3D::TYPE_VECTOR4, Urho3D::SEM_TEXCOORD, 1));
+	}
 	unsigned const VRT_SIZE = Urho3D::VertexBuffer::GetVertexSize(data->vrts_elems);
 
 	// Create map of positions and calculate boundingbox
@@ -77,6 +126,43 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 			// Texture coordinates
 			Urho3D::Vector2 uv(float(x) / CHUNK_W, float(y) / CHUNK_W);
 			data->vrts_data.Insert(data->vrts_data.End(), (char*)uv.Data(), (char*)uv.Data() + V2_SIZE);
+
+			// Terrain weights
+			TTypesByWeight const& cts = data->corners[ofs].ttypes;
+			if (data->used_ttypes.Size() == 2) {
+				float w0 = getTerraintypeWeight(cts, data->used_ttypes[0]);
+				float w1 = getTerraintypeWeight(cts, data->used_ttypes[1]);
+				float total = w0 + w1;
+				if (total == 0) {
+					w0 = 1;
+					total = 1;
+				}
+				Urho3D::Vector2 ttypes_weights(w0 / total, w1 / total);
+				data->vrts_data.Insert(data->vrts_data.End(), (char*)ttypes_weights.Data(), (char*)ttypes_weights.Data() + V2_SIZE);
+			} else if (data->used_ttypes.Size() == 3) {
+				float w0 = getTerraintypeWeight(cts, data->used_ttypes[0]);
+				float w1 = getTerraintypeWeight(cts, data->used_ttypes[1]);
+				float w2 = getTerraintypeWeight(cts, data->used_ttypes[2]);
+				float total = w0 + w1;
+				if (total == 0) {
+					w0 = 1;
+					total = 1;
+				}
+				Urho3D::Vector3 ttypes_weights(w0 / total, w1 / total, w2 / total);
+				data->vrts_data.Insert(data->vrts_data.End(), (char*)ttypes_weights.Data(), (char*)ttypes_weights.Data() + V3_SIZE);
+			} else if (data->used_ttypes.Size() == 4) {
+				float w0 = getTerraintypeWeight(cts, data->used_ttypes[0]);
+				float w1 = getTerraintypeWeight(cts, data->used_ttypes[1]);
+				float w2 = getTerraintypeWeight(cts, data->used_ttypes[2]);
+				float w3 = getTerraintypeWeight(cts, data->used_ttypes[3]);
+				float total = w0 + w1;
+				if (total == 0) {
+					w0 = 1;
+					total = 1;
+				}
+				Urho3D::Vector4 ttypes_weights(w0 / total, w1 / total, w2 / total, w3 / total);
+				data->vrts_data.Insert(data->vrts_data.End(), (char*)ttypes_weights.Data(), (char*)ttypes_weights.Data() + V4_SIZE);
+			}
 
 			++ ofs;
 		}

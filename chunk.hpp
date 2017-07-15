@@ -26,6 +26,8 @@ public:
 	inline unsigned getBaseheight() const { return baseheight; }
 
 	inline bool hasLod(ChunkLod const& lod) const { return lods.Contains(lod); }
+// TODO: Replace this temporary dummy function with real check!
+inline bool hasTerraintypeTexture() const { return false; }
 
 	void setLod(ChunkLod const& lod, Urho3D::Model* model, Urho3D::Material* mat);
 

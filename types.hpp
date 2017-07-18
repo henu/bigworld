@@ -86,7 +86,6 @@ struct LodBuildingTaskData : public Urho3D::RefCounted
 {
 	// Input
 	Urho3D::Context* context;
-	Urho3D::IntVector2 pos;
 	ChunkLod lod;
 	Corners corners;
 	unsigned baseheight;
@@ -105,7 +104,6 @@ struct LodBuildingTaskData : public Urho3D::RefCounted
 	TTypes used_ttypes;
 	Urho3D::SharedPtr<Urho3D::Image> ttype_image;
 };
-
 
 }
 

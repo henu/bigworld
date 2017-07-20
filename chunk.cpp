@@ -154,9 +154,15 @@ bool Chunk::prepareForLod(ChunkLod const& lod, Urho3D::IntVector2 const& pos)
 
 void Chunk::show(Urho3D::Scene* scene, Urho3D::IntVector2 const& rel_pos, unsigned origin_height, ChunkLod lod)
 {
-	assert(!node);
 	assert(lodcache.Contains(lod));
 	assert(!matcache.Null());
+
+// TODO: In future, use existing node and static model if possible!
+	if (node) {
+		node->Remove();
+		node = NULL;
+		active_model = NULL;
+	}
 
 	node = scene->CreateChild();
 	node->SetPosition(Urho3D::Vector3(

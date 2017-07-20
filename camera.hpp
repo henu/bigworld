@@ -43,6 +43,8 @@ public:
 	// Called automatically
 	void updateNodeTransform();
 
+	bool fixIfOutsideOrigin();
+
 private:
 
 	ChunkWorld* world;

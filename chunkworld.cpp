@@ -198,12 +198,17 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 		}
 	}
 
-	if (!viewarea_recalculation_required) {
+	// If there is no camera, then do nothing
+	if (camera.Null()) {
 		return;
 	}
 
-	// If there is no camera, then do nothing
-	if (camera.Null()) {
+	// Check if camera has moved away from origin
+	if (camera->fixIfOutsideOrigin()) {
+		viewarea_recalculation_required = true;
+	}
+
+	if (!viewarea_recalculation_required) {
 		return;
 	}
 

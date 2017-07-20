@@ -21,7 +21,7 @@ scene(NULL),
 origin(0, 0),
 origin_height(0),
 view_distance_in_chunks(8),
-viewarea_recalculation_required(true)
+viewarea_recalculation_required(false)
 {
 	SubscribeToEvent(Urho3D::E_BEGINFRAME, URHO3D_HANDLER(ChunkWorld, handleBeginFrame));
 }
@@ -35,6 +35,20 @@ void ChunkWorld::setScene(Urho3D::Scene* scene)
 {
 	assert(va.Empty());
 	this->scene = scene;
+}
+
+Camera* ChunkWorld::setUpCamera(Urho3D::IntVector2 const& chunk_pos, unsigned baseheight, Urho3D::Vector3 const& pos, float yaw, float pitch, float roll, unsigned viewdistance_in_chunks)
+{
+	if (camera.NotNull()) {
+		throw std::runtime_error("Camera can be set up only once!");
+	}
+
+	camera = new Camera(this, chunk_pos, baseheight, pos, yaw, pitch, roll, viewdistance_in_chunks);
+	camera->updateNodeTransform();
+
+	viewarea_recalculation_required = true;
+
+	return camera;
 }
 
 void ChunkWorld::addChunk(Urho3D::IntVector2 const& chunk_pos, Chunk* chunk)
@@ -179,6 +193,8 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 			origin_height = va_being_built_origin_height;
 			view_distance_in_chunks = va_being_built_view_distance_in_chunks;
 			va_being_built.Clear();
+
+			camera->updateNodeTransform();
 		}
 	}
 
@@ -186,19 +202,23 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 		return;
 	}
 
+	// If there is no camera, then do nothing
+	if (camera.Null()) {
+		return;
+	}
+
 	// Viewarea requires recalculation. Form new Viewarea object.
 	va_being_built.Clear();
-// TODO: Get the following two values from camera or something...
-	va_being_built_origin = origin;
-	va_being_built_origin_height = origin_height;
-	va_being_built_view_distance_in_chunks = view_distance_in_chunks;
+	va_being_built_origin = camera->getChunkPosition();
+	va_being_built_origin_height = camera->getBaseHeight();
+	va_being_built_view_distance_in_chunks = camera->getViewDistanceInChunks();
 
 	// Go viewarea through
 	Urho3D::IntVector2 it;
-	for (it.y_ = -view_distance_in_chunks; it.y_ <= int(view_distance_in_chunks); ++ it.y_) {
-		for (it.x_ = -view_distance_in_chunks; it.x_ <= int(view_distance_in_chunks); ++ it.x_) {
+	for (it.y_ = -va_being_built_view_distance_in_chunks; it.y_ <= int(va_being_built_view_distance_in_chunks); ++ it.y_) {
+		for (it.x_ = -va_being_built_view_distance_in_chunks; it.x_ <= int(va_being_built_view_distance_in_chunks); ++ it.x_) {
 			// If too far away
-			if (it.Length() > view_distance_in_chunks) {
+			if (it.Length() > va_being_built_view_distance_in_chunks) {
 				continue;
 			}
 

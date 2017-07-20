@@ -18,6 +18,27 @@ viewdistance_in_chunks(viewdistance_in_chunks)
 	node = world->getScene()->CreateChild();
 }
 
+Urho3D::Quaternion Camera::getRotation() const
+{
+	Urho3D::Quaternion rot(roll, Urho3D::Vector3::FORWARD);
+	rot = Urho3D::Quaternion(pitch, Urho3D::Vector3::RIGHT) * rot;
+	rot = Urho3D::Quaternion(yaw, Urho3D::Vector3::UP) * rot;
+	return rot;
+}
+
+void Camera::applyRelativeMovement(Urho3D::Vector3 const& movement)
+{
+	applyAbsoluteMovement(getRotation() * movement);
+}
+
+void Camera::applyAbsoluteMovement(Urho3D::Vector3 const& movement)
+{
+	pos += movement;
+// TODO: Check if chunk_pos/baseheight should be updated!
+	updateNodeTransform();
+}
+
+
 void Camera::updateNodeTransform()
 {
 	float const CHUNK_W_F = world->getChunkWidth() * world->getSquareWidth();
@@ -35,11 +56,7 @@ void Camera::updateNodeTransform()
 	final_pos.z_ += diff_xz.y_ * CHUNK_W_F;
 
 	node->SetPosition(final_pos);
-
-	Urho3D::Quaternion rot(roll, Urho3D::Vector3::FORWARD);
-	rot = Urho3D::Quaternion(pitch, Urho3D::Vector3::RIGHT) * rot;
-	rot = Urho3D::Quaternion(yaw, Urho3D::Vector3::UP) * rot;
-	node->SetRotation(rot);
+	node->SetRotation(getRotation());
 }
 
 }

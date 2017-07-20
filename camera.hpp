@@ -23,7 +23,24 @@ public:
 	inline unsigned getViewDistanceInChunks() const { return viewdistance_in_chunks; }
 
 	inline Urho3D::Node* getNode() const { return node; }
+	Urho3D::Quaternion getRotation() const;
 
+	void applyRelativeMovement(Urho3D::Vector3 const& movement);
+	void applyAbsoluteMovement(Urho3D::Vector3 const& movement);
+
+	inline void addYaw(float angle) { yaw += angle; updateNodeTransform(); }
+	inline void addPitch(float angle) { pitch += angle; updateNodeTransform(); }
+	inline void addRoll(float angle) { roll += angle; updateNodeTransform(); }
+
+	inline float getYaw() const { return yaw; }
+	inline float getPitch() const { return pitch; }
+	inline float getRoll() const { return roll; }
+
+	inline void setYaw(float angle) { yaw = angle; updateNodeTransform(); }
+	inline void setPitch(float angle) { pitch = angle; updateNodeTransform(); }
+	inline void setRoll(float angle) { roll = angle; updateNodeTransform(); }
+
+	// Called automatically
 	void updateNodeTransform();
 
 private:

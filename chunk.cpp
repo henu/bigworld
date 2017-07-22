@@ -157,30 +157,33 @@ void Chunk::show(Urho3D::Scene* scene, Urho3D::IntVector2 const& rel_pos, unsign
 	assert(lodcache.Contains(lod));
 	assert(!matcache.Null());
 
-// TODO: In future, use existing node and static model if possible!
-	if (node) {
-		node->Remove();
-		node = NULL;
-		active_model = NULL;
+	if (!node) {
+		node = scene->CreateChild();
 	}
 
-	node = scene->CreateChild();
 	node->SetPosition(Urho3D::Vector3(
-	  rel_pos.x_ * int(world->getChunkWidth()) * world->getSquareWidth(),
-	  (int(baseheight) - int(origin_height)) * world->getHeightstep(),
-	  rel_pos.y_ * int(world->getChunkWidth()) * world->getSquareWidth()
+		rel_pos.x_ * int(world->getChunkWidth()) * world->getSquareWidth(),
+		(int(baseheight) - int(origin_height)) * world->getHeightstep(),
+		rel_pos.y_ * int(world->getChunkWidth()) * world->getSquareWidth()
 	));
 
-	active_model = node->CreateComponent<Urho3D::StaticModel>();
-	active_model->SetModel(lodcache[lod]);
-	active_model->SetMaterial(matcache);
+	// If there is no active static model, then one needs to be created
+	if (!active_model) {
+		active_model = node->CreateComponent<Urho3D::StaticModel>();
+		active_model->SetModel(lodcache[lod]);
+		active_model->SetMaterial(matcache);
+	}
+	// If there is active static model, but it has different properties
+	else if (active_model->GetModel() != lodcache[lod] || active_model->GetMaterial() != matcache) {
+		active_model->SetModel(lodcache[lod]);
+		active_model->SetMaterial(matcache);
+	}
 }
 
 void Chunk::hide()
 {
-	if (node) {
-		node->Remove();
-		node = NULL;
+	if (active_model) {
+		node->RemoveComponent(active_model);
 		active_model = NULL;
 	}
 }

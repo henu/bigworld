@@ -70,7 +70,6 @@ private:
 	ViewArea va;
 	Urho3D::IntVector2 origin;
 	unsigned origin_height;
-	unsigned view_distance_in_chunks;
 
 	// This is enabled if viewarea changes
 	bool viewarea_recalculation_required;

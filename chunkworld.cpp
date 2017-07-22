@@ -20,7 +20,6 @@ terrain_texture_repeats(terrain_texture_repeats),
 scene(NULL),
 origin(0, 0),
 origin_height(0),
-view_distance_in_chunks(8),
 viewarea_recalculation_required(false)
 {
 	SubscribeToEvent(Urho3D::E_BEGINFRAME, URHO3D_HANDLER(ChunkWorld, handleBeginFrame));
@@ -191,7 +190,6 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 			va = va_being_built;
 			origin = va_being_built_origin;
 			origin_height = va_being_built_origin_height;
-			view_distance_in_chunks = va_being_built_view_distance_in_chunks;
 			va_being_built.Clear();
 
 			camera->updateNodeTransform();

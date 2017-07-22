@@ -62,26 +62,27 @@ void Camera::updateNodeTransform()
 bool Camera::fixIfOutsideOrigin()
 {
 	float const CHUNK_W_F = world->getChunkWidth() * world->getSquareWidth();
+	float const CHUNK_HALF_W_F = CHUNK_W_F / 2;
 	float const HEIGHTSTEP = world->getHeightstep();
 	float CHUNK_THRESHOLD = 1.5;
 	unsigned const HEIGHT_THRESHOLD = 500;
 
 	bool fixed = false;
 
-	if (pos.x_ < -CHUNK_W_F * CHUNK_THRESHOLD) {
+	if (pos.x_ < -CHUNK_HALF_W_F * CHUNK_THRESHOLD) {
 		pos.x_ += CHUNK_W_F;
 		-- chunk_pos.x_;
 		fixed = true;
-	} else if (pos.x_ > CHUNK_W_F * CHUNK_THRESHOLD) {
+	} else if (pos.x_ > CHUNK_HALF_W_F * CHUNK_THRESHOLD) {
 		pos.x_ -= CHUNK_W_F;
 		++ chunk_pos.x_;
 		fixed = true;
 	}
-	if (pos.z_ < -CHUNK_W_F * CHUNK_THRESHOLD) {
+	if (pos.z_ < -CHUNK_HALF_W_F * CHUNK_THRESHOLD) {
 		pos.z_ += CHUNK_W_F;
 		-- chunk_pos.y_;
 		fixed = true;
-	} else if (pos.z_ > CHUNK_W_F * CHUNK_THRESHOLD) {
+	} else if (pos.z_ > CHUNK_HALF_W_F * CHUNK_THRESHOLD) {
 		pos.z_ -= CHUNK_W_F;
 		++ chunk_pos.y_;
 		fixed = true;

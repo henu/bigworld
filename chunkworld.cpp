@@ -225,7 +225,7 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 				continue;
 			}
 
-			Urho3D::IntVector2 pos = origin + it;
+			Urho3D::IntVector2 pos = va_being_built_origin + it;
 
 			// If Chunk or any of it's neighbors (except southwestern) is missing, then skip this
 			if (!chunks.Contains(pos) ||

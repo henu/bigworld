@@ -45,10 +45,10 @@ void Camera::updateNodeTransform()
 	float const HEIGHTSTEP = world->getHeightstep();
 
 	Urho3D::IntVector2 origin = world->getOrigin();
-	unsigned origin_height = world->getOriginHeight();
+	int origin_height = world->getOriginHeight();
 
 	Urho3D::IntVector2 diff_xz = chunk_pos - origin;
-	unsigned diff_y = baseheight - origin_height;
+	int diff_y = baseheight - origin_height;
 
 	Urho3D::Vector3 final_pos = pos;
 	final_pos.x_ += diff_xz.x_ * CHUNK_W_F;

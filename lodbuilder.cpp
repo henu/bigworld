@@ -24,7 +24,7 @@ Urho3D::SharedPtr<Urho3D::Image> calculateTerraintypeImage(TTypes& result_used_t
 
 	// Calculate what terrains are used and how much. If there are
 	// too many of them, then the rarest ones will be ignored.
-	unsigned const MAX_TERRAINTYPES_IN_MATERIAL = 3;
+	unsigned const MAX_TERRAINTYPES_IN_MATERIAL = 4;
 	TTypesByWeight used_ttypes;
 	for (unsigned y = 0; y < CHUNK_W1; ++ y) {
 		unsigned ofs = 1 + (y + 1) * (CHUNK_W3);
@@ -70,35 +70,36 @@ Urho3D::SharedPtr<Urho3D::Image> calculateTerraintypeImage(TTypes& result_used_t
 	Urho3D::SharedPtr<Urho3D::Image> img(new Urho3D::Image(context));
 // TODO: Consider using POT(Power Of Two) image size!
 // TODO: Use variable amount of components!
-	img->SetSize(CHUNK_W1, CHUNK_W1, 3);
+	if (result_used_ttypes.Size() == 4) {
+		img->SetSize(CHUNK_W1, CHUNK_W1, 4);
+	} else {
+		img->SetSize(CHUNK_W1, CHUNK_W1, 3);
+	}
 
 	// Render terrain types to image
 	for (unsigned y = 0; y < CHUNK_W1; ++ y) {
 		unsigned ofs = 1 + (y + 1) * (CHUNK_W3);
 		for (unsigned x = 0; x < CHUNK_W1; ++ x) {
 			TTypesByWeight const& ttypes = corners[ofs].ttypes;
-			if (result_used_ttypes.Size() == 2) {
-				float w0 = getTerraintypeWeight(ttypes, result_used_ttypes[0]);
-				float w1 = getTerraintypeWeight(ttypes, result_used_ttypes[1]);
-				float total = w0 + w1;
-				if (total == 0) {
-					w0 = 1;
-					total = 1;
-				}
-				img->SetPixel(x, y, Urho3D::Color(w0 / total, w1 / total, 0));
-			} else if (result_used_ttypes.Size() == 3) {
-				float w0 = getTerraintypeWeight(ttypes, result_used_ttypes[0]);
-				float w1 = getTerraintypeWeight(ttypes, result_used_ttypes[1]);
-				float w2 = getTerraintypeWeight(ttypes, result_used_ttypes[2]);
-				float total = w0 + w1 + w2;
-				if (total == 0) {
-					w0 = 1;
-					total = 1;
-				}
-				img->SetPixel(x, y, Urho3D::Color(w0 / total, w1 / total, w2 / total));
-			} else {
-				assert(false);
+			assert(result_used_ttypes.Size() >= 2);
+			assert(result_used_ttypes.Size() <= 4);
+
+			float w0 = getTerraintypeWeight(ttypes, result_used_ttypes[0]);
+			float w1 = getTerraintypeWeight(ttypes, result_used_ttypes[1]);
+			float w2 = 0;
+			float w3 = 0;
+			if (result_used_ttypes.Size() >= 3) {
+				w2 = getTerraintypeWeight(ttypes, result_used_ttypes[2]);
 			}
+			if (result_used_ttypes.Size() >= 4) {
+				w3 = getTerraintypeWeight(ttypes, result_used_ttypes[3]);
+			}
+			float total = w0 + w1 + w2 + w3;
+			if (total == 0) {
+				w0 = 1;
+				total = 1;
+			}
+			img->SetPixel(x, y, Urho3D::Color(w0 / total, w1 / total, w2 / total, w3 / total));
 
 			++ ofs;
 		}

@@ -141,6 +141,12 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 
 	// If there is new viewarea being applied, then check if everything is ready
 	if (!va_being_built.Empty()) {
+
+		// Sometimes preparing takes lots of time. Use timer to
+		// stop preparations if too much time is being spent.
+		Urho3D::Time timer(context_);
+		float preparation_started = timer.GetElapsedTime();
+
 		bool everything_ready = true;
 		for (ViewArea::Iterator i = va_being_built.Begin(); i != va_being_built.End(); ++ i) {
 			Urho3D::IntVector2 pos = i->first_;
@@ -149,6 +155,11 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 
 			if (!chunk->prepareForLod(lod, pos)) {
 				everything_ready = false;
+			}
+
+			if (timer.GetElapsedTime() - preparation_started > 1.0 / 120) {
+				everything_ready = false;
+				break;
 			}
 		}
 

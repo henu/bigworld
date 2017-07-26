@@ -154,9 +154,9 @@ void Chunk::show(Urho3D::IntVector2 const& rel_pos, unsigned origin_height, Chun
 	assert(!matcache.Null());
 
 	node->SetPosition(Urho3D::Vector3(
-		rel_pos.x_ * int(world->getChunkWidth()) * world->getSquareWidth(),
+		rel_pos.x_ * world->getChunkWidthFloat(),
 		(int(baseheight) - int(origin_height)) * world->getHeightstep(),
-		rel_pos.y_ * int(world->getChunkWidth()) * world->getSquareWidth()
+		rel_pos.y_ * world->getChunkWidthFloat()
 	));
 
 	// If there is no active static model, then one needs to be created

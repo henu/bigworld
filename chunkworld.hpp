@@ -30,6 +30,7 @@ public:
 	Camera* setUpCamera(Urho3D::IntVector2 const& chunk_pos, unsigned baseheight, Urho3D::Vector3 const& pos, float yaw = 0, float pitch = 0, float roll = 0, unsigned viewdistance_in_chunks = 8);
 
 	inline unsigned getChunkWidth() const { return chunk_width; }
+	inline float getChunkWidthFloat() const { return chunk_width * sqr_width; }
 	inline float getSquareWidth() const { return sqr_width; }
 	inline float getHeightstep() const { return heightstep; }
 	inline unsigned getTerrainTextureRepeats() const { return terrain_texture_repeats; }

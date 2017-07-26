@@ -41,7 +41,7 @@ void Camera::applyAbsoluteMovement(Urho3D::Vector3 const& movement)
 
 void Camera::updateNodeTransform()
 {
-	float const CHUNK_W_F = world->getChunkWidth() * world->getSquareWidth();
+	float const CHUNK_W_F = world->getChunkWidthFloat();
 	float const HEIGHTSTEP = world->getHeightstep();
 
 	Urho3D::IntVector2 origin = world->getOrigin();
@@ -61,7 +61,7 @@ void Camera::updateNodeTransform()
 
 bool Camera::fixIfOutsideOrigin()
 {
-	float const CHUNK_W_F = world->getChunkWidth() * world->getSquareWidth();
+	float const CHUNK_W_F = world->getChunkWidthFloat();
 	float const CHUNK_HALF_W_F = CHUNK_W_F / 2;
 	float const HEIGHTSTEP = world->getHeightstep();
 	float CHUNK_THRESHOLD = 1.5;

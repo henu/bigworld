@@ -11,13 +11,13 @@
 namespace BigWorld
 {
 
-ChunkWorld::ChunkWorld(Urho3D::Context* context, unsigned chunk_width, float sqr_width, float heightstep, unsigned terrain_texture_repeats) :
+ChunkWorld::ChunkWorld(Urho3D::Context* context, Urho3D::Scene* scene, unsigned chunk_width, float sqr_width, float heightstep, unsigned terrain_texture_repeats) :
 Urho3D::Object(context),
+scene(scene),
 chunk_width(chunk_width),
 sqr_width(sqr_width),
 heightstep(heightstep),
 terrain_texture_repeats(terrain_texture_repeats),
-scene(NULL),
 origin(0, 0),
 origin_height(0),
 viewarea_recalculation_required(false)
@@ -28,12 +28,6 @@ viewarea_recalculation_required(false)
 void ChunkWorld::addTerrainTexture(Urho3D::String const& name)
 {
 	texs_names.Push(name);
-}
-
-void ChunkWorld::setScene(Urho3D::Scene* scene)
-{
-	assert(va.Empty());
-	this->scene = scene;
 }
 
 Camera* ChunkWorld::setUpCamera(Urho3D::IntVector2 const& chunk_pos, unsigned baseheight, Urho3D::Vector3 const& pos, float yaw, float pitch, float roll, unsigned viewdistance_in_chunks)
@@ -174,7 +168,7 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 				ChunkLod lod = i->second_;
 				Chunk* chunk = chunks[pos];
 
-				chunk->show(scene, pos - va_being_built_origin, va_being_built_origin_height, lod);
+				chunk->show(pos - va_being_built_origin, va_being_built_origin_height, lod);
 
 				old_chunks.Erase(pos);
 			}

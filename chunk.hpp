@@ -19,7 +19,6 @@ class Chunk : public Urho3D::Object
 
 public:
 
-	Chunk();
 	Chunk(ChunkWorld* world);
 	Chunk(ChunkWorld* world, Corners const& corners);
 	virtual ~Chunk();
@@ -31,7 +30,7 @@ public:
 	inline bool hasLod(ChunkLod const& lod) const { return lodcache.Contains(lod); }
 
 	// Shows/hides Chunks
-	void show(Urho3D::Scene* scene, Urho3D::IntVector2 const& rel_pos, unsigned origin_height, ChunkLod lod);
+	void show(Urho3D::IntVector2 const& rel_pos, unsigned origin_height, ChunkLod lod);
 	void hide();
 
 	void copyCornerRow(Corners& result, unsigned x, unsigned y, unsigned size);

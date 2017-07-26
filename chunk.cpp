@@ -17,16 +17,9 @@
 namespace BigWorld
 {
 
-Chunk::Chunk() :
-Urho3D::Object(NULL),
-node(NULL)
-{
-}
-
 Chunk::Chunk(ChunkWorld* world) :
 Urho3D::Object(world->GetContext()),
-world(world),
-node(NULL)
+world(world)
 {
 	// Fill chunk with default corners
 	unsigned area = world->getChunkWidth() * world->getChunkWidth();
@@ -36,13 +29,14 @@ node(NULL)
 	corners.Resize(area, default_corner);
 
 	baseheight = 0;
+
+	node = world->getScene()->CreateChild();
 }
 
 Chunk::Chunk(ChunkWorld* world, Corners const& corners) :
 Urho3D::Object(world->GetContext()),
 world(world),
-corners(corners),
-node(NULL)
+corners(corners)
 {
 	if (corners.Size() != world->getChunkWidth() * world->getChunkWidth()) {
 		throw std::runtime_error("Array of corners has invalid size!");
@@ -57,6 +51,8 @@ node(NULL)
 	}
 	average_height /= corners.Size();
 	baseheight = average_height;
+
+	node = world->getScene()->CreateChild();
 }
 
 Chunk::~Chunk()
@@ -152,14 +148,10 @@ bool Chunk::prepareForLod(ChunkLod const& lod, Urho3D::IntVector2 const& pos)
 	return false;
 }
 
-void Chunk::show(Urho3D::Scene* scene, Urho3D::IntVector2 const& rel_pos, unsigned origin_height, ChunkLod lod)
+void Chunk::show(Urho3D::IntVector2 const& rel_pos, unsigned origin_height, ChunkLod lod)
 {
 	assert(lodcache.Contains(lod));
 	assert(!matcache.Null());
-
-	if (!node) {
-		node = scene->CreateChild();
-	}
 
 	node->SetPosition(Urho3D::Vector3(
 		rel_pos.x_ * int(world->getChunkWidth()) * world->getSquareWidth(),
@@ -182,10 +174,14 @@ void Chunk::show(Urho3D::Scene* scene, Urho3D::IntVector2 const& rel_pos, unsign
 
 void Chunk::hide()
 {
+	// Remove active model. If the model stays up
+	// to date, it can be still found from cache.
 	if (active_model) {
 		node->RemoveComponent(active_model);
 		active_model = NULL;
 	}
+
+// TODO: Hide node somehow!
 }
 
 void Chunk::copyCornerRow(Corners& result, unsigned x, unsigned y, unsigned size)

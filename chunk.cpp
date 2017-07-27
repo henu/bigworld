@@ -31,6 +31,7 @@ world(world)
 	baseheight = 0;
 
 	node = world->getScene()->CreateChild();
+	node->SetDeepEnabled(false);
 }
 
 Chunk::Chunk(ChunkWorld* world, Corners const& corners) :
@@ -53,6 +54,7 @@ corners(corners)
 	baseheight = average_height;
 
 	node = world->getScene()->CreateChild();
+	node->SetDeepEnabled(false);
 }
 
 Chunk::~Chunk()
@@ -170,6 +172,8 @@ void Chunk::show(Urho3D::IntVector2 const& rel_pos, unsigned origin_height, Chun
 		active_model->SetModel(lodcache[lod]);
 		active_model->SetMaterial(matcache);
 	}
+
+	node->SetDeepEnabled(true);
 }
 
 void Chunk::hide()
@@ -181,7 +185,14 @@ void Chunk::hide()
 		active_model = NULL;
 	}
 
-// TODO: Hide node somehow!
+	node->SetDeepEnabled(false);
+}
+
+Urho3D::Node* Chunk::createChildNode()
+{
+	Urho3D::Node* child = node->CreateChild();
+	child->SetEnabled(node->IsEnabled());
+	return child;
 }
 
 void Chunk::copyCornerRow(Corners& result, unsigned x, unsigned y, unsigned size)

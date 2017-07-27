@@ -55,6 +55,15 @@ void ChunkWorld::addChunk(Urho3D::IntVector2 const& chunk_pos, Chunk* chunk)
 	viewarea_recalculation_required = true;
 }
 
+Chunk* ChunkWorld::getChunk(Urho3D::IntVector2 const& chunk_pos)
+{
+	Chunks::Iterator chunks_find = chunks.Find(chunk_pos);
+	if (chunks_find != chunks.End()) {
+		return chunks_find->second_;
+	}
+	return NULL;
+}
+
 void ChunkWorld::extractCornersData(Corners& result, Urho3D::IntVector2 const& pos)
 {
 	// Get required chunks

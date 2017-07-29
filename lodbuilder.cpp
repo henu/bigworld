@@ -133,7 +133,6 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 	data->vrts_elems.Push(Urho3D::VertexElement(Urho3D::TYPE_VECTOR3, Urho3D::SEM_POSITION));
 	data->vrts_elems.Push(Urho3D::VertexElement(Urho3D::TYPE_VECTOR3, Urho3D::SEM_NORMAL));
 	data->vrts_elems.Push(Urho3D::VertexElement(Urho3D::TYPE_VECTOR2, Urho3D::SEM_TEXCOORD));
-	unsigned const VRT_SIZE = Urho3D::VertexBuffer::GetVertexSize(data->vrts_elems);
 
 	// Create map of positions and calculate boundingbox
 	data->boundingbox.Clear();
@@ -179,12 +178,12 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 	}
 	bool multiple_terraintypes = ttype_check.Size() > 1;
 
+	unsigned step = Urho3D::Min<unsigned>(CHUNK_W, 1 << data->lod.detail);
 
 	// Create vertex data
-	data->vrts_data.Reserve(VRT_SIZE * CHUNK_W1 * CHUNK_W1);
-	for (unsigned y = 0; y < CHUNK_W1; ++ y) {
-		ofs = 1 + (y + 1) * (CHUNK_W3);
-		for (unsigned x = 0; x < CHUNK_W1; ++ x) {
+	for (unsigned y = 0; y < CHUNK_W1; y += step) {
+		ofs = 1 + (y + 1) * CHUNK_W3;
+		for (unsigned x = 0; x < CHUNK_W1; x += step) {
 			Urho3D::Vector3 const& pos = poss[ofs];
 
 			// Position
@@ -211,29 +210,26 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 			}
 			data->vrts_data.Insert(data->vrts_data.End(), (char*)uv.Data(), (char*)uv.Data() + V2_SIZE);
 
-			++ ofs;
+			ofs += step;
 		}
 	}
-	assert(data->vrts_data.Size() == VRT_SIZE * CHUNK_W1 * CHUNK_W1);
 
 	// Create index data
-	data->idxs_data.Reserve(3 * 2 * CHUNK_W * CHUNK_W);
-	for (unsigned y = 0; y < CHUNK_W; ++ y) {
-		ofs = y * CHUNK_W1;
-		for (unsigned x = 0; x < CHUNK_W; ++ x) {
+	for (unsigned y = 0; y < CHUNK_W / step; ++ y) {
+		ofs = y * (CHUNK_W / step + 1);
+		for (unsigned x = 0; x < CHUNK_W / step; ++ x) {
 
 			data->idxs_data.Push(ofs);
-			data->idxs_data.Push(ofs + 1 + CHUNK_W1);
+			data->idxs_data.Push(ofs + 1 + CHUNK_W / step + 1);
 			data->idxs_data.Push(ofs + 1);
 
 			data->idxs_data.Push(ofs);
-			data->idxs_data.Push(ofs + CHUNK_W1);
-			data->idxs_data.Push(ofs + 1 + CHUNK_W1);
+			data->idxs_data.Push(ofs + CHUNK_W / step + 1);
+			data->idxs_data.Push(ofs + 1 + CHUNK_W / step + 1);
 
 			++ ofs;
 		}
 	}
-	assert(data->idxs_data.Size() == 3 *  2 * CHUNK_W * CHUNK_W);
 }
 
 }

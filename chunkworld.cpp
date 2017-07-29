@@ -235,7 +235,8 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 	for (it.y_ = -va_being_built_view_distance_in_chunks; it.y_ <= int(va_being_built_view_distance_in_chunks); ++ it.y_) {
 		for (it.x_ = -va_being_built_view_distance_in_chunks; it.x_ <= int(va_being_built_view_distance_in_chunks); ++ it.x_) {
 			// If too far away
-			if (it.Length() > va_being_built_view_distance_in_chunks) {
+			float distance = it.Length();
+			if (distance > va_being_built_view_distance_in_chunks) {
 				continue;
 			}
 
@@ -254,7 +255,8 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 			}
 
 			// Add to future ViewArea object
-			ChunkLod lod(CL_CENTER, 0);
+			unsigned lod_detail = int(Urho3D::Ln<float>(distance + 1) / Urho3D::Ln<float>(1.75));
+			ChunkLod lod(CL_CENTER, lod_detail);
 			va_being_built[pos] = lod;
 		}
 	}

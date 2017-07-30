@@ -310,6 +310,24 @@ bool Chunk::storeTaskResultsToLodCache()
 	lodcache[task_lod] = new_model;
 	matcache = mat;
 
+	// If cache grows too big, remove some elements from it.
+	unsigned const LODCACHE_MAX_SIZE = 2;
+	if (lodcache.Size() > LODCACHE_MAX_SIZE) {
+		unsigned remove = rand() % (lodcache.Size() - 1);
+		LodCache::Iterator it = lodcache.Begin();
+		while (true) {
+			// Skip current lod
+			if (it->first_ == task_lod) {
+				continue;
+			}
+			if (remove == 0) {
+				lodcache.Erase(it);
+				break;
+			}
+			-- remove;
+		}
+	}
+
 	return true;
 }
 

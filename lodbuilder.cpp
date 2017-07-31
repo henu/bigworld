@@ -133,8 +133,9 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 	data->vrts_elems.Push(Urho3D::VertexElement(Urho3D::TYPE_VECTOR3, Urho3D::SEM_POSITION));
 	data->vrts_elems.Push(Urho3D::VertexElement(Urho3D::TYPE_VECTOR3, Urho3D::SEM_NORMAL));
 	data->vrts_elems.Push(Urho3D::VertexElement(Urho3D::TYPE_VECTOR2, Urho3D::SEM_TEXCOORD));
+	unsigned const VRT_SIZE = Urho3D::VertexBuffer::GetVertexSize(data->vrts_elems);
 
-	// Create map of positions and calculate boundingbox
+	// Create array of positions and calculate boundingbox
 	data->boundingbox.Clear();
 	Urho3D::PODVector<Urho3D::Vector3> poss;
 	unsigned ofs = 0;
@@ -178,6 +179,46 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 	}
 	bool multiple_terraintypes = ttype_check.Size() > 1;
 
+	// Create array of normals and UV coordinates
+	Urho3D::PODVector<Urho3D::Vector3> nrms;
+	Urho3D::PODVector<Urho3D::Vector2> uvs;
+	ofs = 0;
+	for (unsigned y = 0; y < CHUNK_W3; ++ y) {
+		for (unsigned x = 0; x < CHUNK_W3; ++ x) {
+			Urho3D::Vector3 nrm;
+			Urho3D::Vector2 uv;
+
+			if (x >= 1 && y >= 1 && x <= CHUNK_W1 && y <= CHUNK_W1) {
+				// Normal
+				Urho3D::Vector3 const& pos = poss[ofs];
+				Urho3D::Vector3 const& pos_n = poss[ofs + CHUNK_W3];
+				Urho3D::Vector3 const& pos_s = poss[ofs - CHUNK_W3];
+				Urho3D::Vector3 const& pos_e = poss[ofs + 1];
+				Urho3D::Vector3 const& pos_w = poss[ofs - 1];
+				Urho3D::Vector3 diff_n = (pos_n - pos).Normalized();
+				Urho3D::Vector3 diff_s = (pos_s - pos).Normalized();
+				Urho3D::Vector3 diff_e = (pos_e - pos).Normalized();
+				Urho3D::Vector3 diff_w = (pos_w - pos).Normalized();
+				nrm = (diff_w.CrossProduct(diff_n) + diff_e.CrossProduct(diff_s)).Normalized();
+				assert(nrm.y_ > 0);
+
+				// Texture coordinates. If there are no multiple terraintypes,
+				// then apply the repeating straight to UV coordinates.
+				uv.x_ = float(x) / CHUNK_W;
+				uv.y_ = float(y) / CHUNK_W;
+				if (!multiple_terraintypes) {
+					uv *= data->terrain_texture_repeats;
+				}
+			}
+
+			nrms.Push(nrm);
+			uvs.Push(uv);
+
+			++ ofs;
+		}
+	}
+
+	// LOD details determines the width of drawn elements, measured in world squares.
 	unsigned step = Urho3D::Min<unsigned>(CHUNK_W, 1 << data->lod.detail);
 
 	// Create vertex data
@@ -185,31 +226,11 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 		ofs = 1 + (y + 1) * CHUNK_W3;
 		for (unsigned x = 0; x < CHUNK_W1; x += step) {
 			Urho3D::Vector3 const& pos = poss[ofs];
-
-			// Position
+			Urho3D::Vector3 const& normal = nrms[ofs];
+			Urho3D::Vector3 const& uv = uvs[ofs];
 			data->vrts_data.Insert(data->vrts_data.End(), (char*)pos.Data(), (char*)pos.Data() + V3_SIZE);
-
-			// Normal
-			Urho3D::Vector3 const& pos_n = poss[ofs + CHUNK_W3];
-			Urho3D::Vector3 const& pos_s = poss[ofs - CHUNK_W3];
-			Urho3D::Vector3 const& pos_e = poss[ofs + 1];
-			Urho3D::Vector3 const& pos_w = poss[ofs - 1];
-			Urho3D::Vector3 diff_n = (pos_n - pos).Normalized();
-			Urho3D::Vector3 diff_s = (pos_s - pos).Normalized();
-			Urho3D::Vector3 diff_e = (pos_e - pos).Normalized();
-			Urho3D::Vector3 diff_w = (pos_w - pos).Normalized();
-			Urho3D::Vector3 normal = (diff_w.CrossProduct(diff_n) + diff_e.CrossProduct(diff_s)).Normalized();
-			assert(normal.y_ > 0);
 			data->vrts_data.Insert(data->vrts_data.End(), (char*)normal.Data(), (char*)normal.Data() + V3_SIZE);
-
-			// Texture coordinates. If there are no multiple terraintypes,
-			// then apply the repeating straight to UV coordinates.
-			Urho3D::Vector2 uv(float(x) / CHUNK_W, float(y) / CHUNK_W);
-			if (!multiple_terraintypes) {
-				uv *= data->terrain_texture_repeats;
-			}
 			data->vrts_data.Insert(data->vrts_data.End(), (char*)uv.Data(), (char*)uv.Data() + V2_SIZE);
-
 			ofs += step;
 		}
 	}
@@ -228,6 +249,111 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 			data->idxs_data.Push(ofs + 1 + CHUNK_W / step + 1);
 
 			++ ofs;
+		}
+	}
+
+	// If not full detail LOD, then add some vertical triangles to
+	// close some holes that appear between different detail chunks.
+	if (data->lod.detail > 0) {
+		// South edge
+		ofs = 1 + CHUNK_W3;
+		for (unsigned i = 0; i < CHUNK_W / step; ++ i) {
+			unsigned h_begin = data->corners[ofs].height;
+			unsigned h_center = data->corners[ofs + step / 2].height;
+			unsigned h_end = data->corners[ofs + step].height;
+			if (h_center * 2 < h_begin + h_end) {
+				unsigned i_begin = i;
+				unsigned i_end = i + 1;
+				unsigned i_center_ofs = 1 + CHUNK_W3 + i * step + step / 2;
+				// Create new vertex
+				unsigned i_center = data->vrts_data.Size() / VRT_SIZE;
+				Urho3D::Vector3 const& center_pos = poss[i_center_ofs];
+				Urho3D::Vector3 const& center_nrm = nrms[i_center_ofs];
+				Urho3D::Vector3 const& center_uv = uvs[i_center_ofs];
+				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_pos.Data(), (char*)center_pos.Data() + V3_SIZE);
+				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_nrm.Data(), (char*)center_nrm.Data() + V3_SIZE);
+				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_uv.Data(), (char*)center_uv.Data() + V2_SIZE);
+				// Create new triangle
+				data->idxs_data.Push(i_begin);
+				data->idxs_data.Push(i_end);
+				data->idxs_data.Push(i_center);
+			}
+			ofs += step;
+		}
+		// East edge
+		ofs = 1 + CHUNK_W3 + CHUNK_W;
+		for (unsigned i = 0; i < CHUNK_W / step; ++ i) {
+			unsigned h_begin = data->corners[ofs].height;
+			unsigned h_center = data->corners[ofs + CHUNK_W3 * step / 2].height;
+			unsigned h_end = data->corners[ofs + CHUNK_W3 * step].height;
+			if (h_center * 2 < h_begin + h_end) {
+				unsigned i_begin = CHUNK_W / step + i * (CHUNK_W / step + 1);
+				unsigned i_end = i_begin + CHUNK_W / step + 1;
+				unsigned i_center_ofs = 1 + CHUNK_W3 + CHUNK_W + i * CHUNK_W3 * step + CHUNK_W3 * step / 2;
+				// Create new vertex
+				unsigned i_center = data->vrts_data.Size() / VRT_SIZE;
+				Urho3D::Vector3 const& center_pos = poss[i_center_ofs];
+				Urho3D::Vector3 const& center_nrm = nrms[i_center_ofs];
+				Urho3D::Vector3 const& center_uv = uvs[i_center_ofs];
+				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_pos.Data(), (char*)center_pos.Data() + V3_SIZE);
+				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_nrm.Data(), (char*)center_nrm.Data() + V3_SIZE);
+				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_uv.Data(), (char*)center_uv.Data() + V2_SIZE);
+				// Create new triangle
+				data->idxs_data.Push(i_begin);
+				data->idxs_data.Push(i_end);
+				data->idxs_data.Push(i_center);
+			}
+			ofs += step * CHUNK_W3;
+		}
+		// North edge
+		ofs = 1 + CHUNK_W3 + CHUNK_W + CHUNK_W * CHUNK_W3;
+		for (unsigned i = 0; i < CHUNK_W / step; ++ i) {
+			unsigned h_begin = data->corners[ofs].height;
+			unsigned h_center = data->corners[ofs - step / 2].height;
+			unsigned h_end = data->corners[ofs - step].height;
+			if (h_center * 2 < h_begin + h_end) {
+				unsigned i_begin = CHUNK_W / step + CHUNK_W / step * (CHUNK_W / step + 1) - i;
+				unsigned i_end = i_begin - 1;
+				unsigned i_center_ofs = 1 + CHUNK_W3 + CHUNK_W + CHUNK_W * CHUNK_W3 - i * step - step / 2;
+				// Create new vertex
+				unsigned i_center = data->vrts_data.Size() / VRT_SIZE;
+				Urho3D::Vector3 const& center_pos = poss[i_center_ofs];
+				Urho3D::Vector3 const& center_nrm = nrms[i_center_ofs];
+				Urho3D::Vector3 const& center_uv = uvs[i_center_ofs];
+				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_pos.Data(), (char*)center_pos.Data() + V3_SIZE);
+				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_nrm.Data(), (char*)center_nrm.Data() + V3_SIZE);
+				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_uv.Data(), (char*)center_uv.Data() + V2_SIZE);
+				// Create new triangle
+				data->idxs_data.Push(i_begin);
+				data->idxs_data.Push(i_end);
+				data->idxs_data.Push(i_center);
+			}
+			ofs -= step;
+		}
+		// West edge
+		ofs = 1 + CHUNK_W3 + CHUNK_W * CHUNK_W3;
+		for (unsigned i = 0; i < CHUNK_W / step; ++ i) {
+			unsigned h_begin = data->corners[ofs].height;
+			unsigned h_center = data->corners[ofs - CHUNK_W3 * step / 2].height;
+			unsigned h_end = data->corners[ofs - CHUNK_W3 * step].height;
+			if (h_center * 2 < h_begin + h_end) {
+				unsigned i_begin = CHUNK_W / step * (CHUNK_W / step + 1) - i * (CHUNK_W / step + 1);
+				unsigned i_end = i_begin - CHUNK_W / step - 1;
+				unsigned i_center_ofs = 1 + CHUNK_W3 + CHUNK_W * CHUNK_W3 - i * CHUNK_W3 * step - CHUNK_W3 * step / 2;
+				// Create new vertex
+				unsigned i_center = data->vrts_data.Size() / VRT_SIZE;
+				Urho3D::Vector3 const& center_pos = poss[i_center_ofs];
+				Urho3D::Vector3 const& center_nrm = nrms[i_center_ofs];
+				Urho3D::Vector3 const& center_uv = uvs[i_center_ofs];
+				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_pos.Data(), (char*)center_pos.Data() + V3_SIZE);
+				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_nrm.Data(), (char*)center_nrm.Data() + V3_SIZE);
+				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_uv.Data(), (char*)center_uv.Data() + V2_SIZE);
+				// Create new triangle
+				data->idxs_data.Push(i_begin);
+				data->idxs_data.Push(i_end);
+				data->idxs_data.Push(i_center);
+			}
+			ofs -= step * CHUNK_W3;
 		}
 	}
 }

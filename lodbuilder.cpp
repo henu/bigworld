@@ -127,8 +127,6 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 	unsigned const V2_SIZE = sizeof(float) * 2;
 	unsigned const V3_SIZE = sizeof(float) * 3;
 
-// TODO: Support other LODs too!
-
 	// Set up elements
 	data->vrts_elems.Push(Urho3D::VertexElement(Urho3D::TYPE_VECTOR3, Urho3D::SEM_POSITION));
 	data->vrts_elems.Push(Urho3D::VertexElement(Urho3D::TYPE_VECTOR3, Urho3D::SEM_NORMAL));
@@ -219,7 +217,7 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 	}
 
 	// LOD details determines the width of drawn elements, measured in world squares.
-	unsigned step = Urho3D::Min<unsigned>(CHUNK_W, 1 << data->lod.detail);
+	unsigned step = Urho3D::Min<unsigned>(CHUNK_W, 1 << data->lod);
 
 	// Create vertex data
 	for (unsigned y = 0; y < CHUNK_W1; y += step) {
@@ -254,7 +252,7 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 
 	// If not full detail LOD, then add some vertical triangles to
 	// close some holes that appear between different detail chunks.
-	if (data->lod.detail > 0) {
+	if (data->lod > 0) {
 		// South edge
 		ofs = 1 + CHUNK_W3;
 		for (unsigned i = 0; i < CHUNK_W / step; ++ i) {

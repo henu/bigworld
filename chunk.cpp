@@ -75,7 +75,7 @@ Chunk::~Chunk()
 	}
 }
 
-bool Chunk::prepareForLod(ChunkLod const& lod, Urho3D::IntVector2 const& pos)
+bool Chunk::prepareForLod(uint8_t lod, Urho3D::IntVector2 const& pos)
 {
 	// Preparation is ready when LOD can be found from loadcache
 	if (lodcache.Contains(lod)) {
@@ -150,7 +150,7 @@ bool Chunk::prepareForLod(ChunkLod const& lod, Urho3D::IntVector2 const& pos)
 	return false;
 }
 
-void Chunk::show(Urho3D::IntVector2 const& rel_pos, unsigned origin_height, ChunkLod lod)
+void Chunk::show(Urho3D::IntVector2 const& rel_pos, unsigned origin_height, uint8_t lod)
 {
 	assert(lodcache.Contains(lod));
 	assert(!matcache.Null());

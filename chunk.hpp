@@ -25,12 +25,12 @@ public:
 
 	// Starts preparing Chunk to be rendered with specific LOD. Should be called
 	// multiple times until returns true to indicate that preparations are ready.
-	bool prepareForLod(ChunkLod const& lod, Urho3D::IntVector2 const& pos);
+	bool prepareForLod(uint8_t lod, Urho3D::IntVector2 const& pos);
 
-	inline bool hasLod(ChunkLod const& lod) const { return lodcache.Contains(lod); }
+	inline bool hasLod(uint8_t lod) const { return lodcache.Contains(lod); }
 
 	// Shows/hides Chunks
-	void show(Urho3D::IntVector2 const& rel_pos, unsigned origin_height, ChunkLod lod);
+	void show(Urho3D::IntVector2 const& rel_pos, unsigned origin_height, uint8_t lod);
 	void hide();
 
 	Urho3D::Node* createChildNode();
@@ -41,7 +41,7 @@ public:
 
 private:
 
-	typedef Urho3D::HashMap<ChunkLod, Urho3D::SharedPtr<Urho3D::Model> > LodCache;
+	typedef Urho3D::HashMap<uint8_t, Urho3D::SharedPtr<Urho3D::Model> > LodCache;
 
 	ChunkWorld* world;
 
@@ -62,7 +62,7 @@ private:
 	// tells if task is executed by being NULL or not NULL.
 	Urho3D::SharedPtr<Urho3D::WorkItem> task_workitem;
 	Urho3D::SharedPtr<LodBuildingTaskData> task_data;
-	ChunkLod task_lod;
+	uint8_t task_lod;
 	Urho3D::SharedPtr<Urho3D::Material> task_mat;
 
 	// Return true if all task results were used succesfully.

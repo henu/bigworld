@@ -13,48 +13,16 @@
 namespace BigWorld
 {
 
-enum ChunkLodType {
-	CL_CENTER = 0
-};
-
-struct ChunkLod
-{
-	ChunkLodType type;
-	uint8_t detail;
-
-	inline ChunkLod() :
-	type(CL_CENTER),
-	detail(0)
-	{
-	}
-
-	inline ChunkLod(ChunkLodType type, uint8_t detail) :
-	type(type),
-	detail(detail)
-	{
-	}
-
-	inline bool operator==(ChunkLod const& other) const
-	{
-		return type == other.type && detail == other.detail;
-	}
-
-	inline unsigned ToHash() const
-	{
-		return type * 31 + detail;
-	}
-};
-
 struct ChunkPosAndLod
 {
 	Urho3D::IntVector2 pos;
-	ChunkLod lod;
+	uint8_t lod;
 
 	inline ChunkPosAndLod()
 	{
 	}
 
-	inline ChunkPosAndLod(Urho3D::IntVector2 const& pos, ChunkLod const& lod) :
+	inline ChunkPosAndLod(Urho3D::IntVector2 const& pos, uint8_t lod) :
 	pos(pos),
 	lod(lod)
 	{
@@ -67,11 +35,11 @@ struct ChunkPosAndLod
 
 	inline unsigned ToHash() const
 	{
-		return pos.ToHash() * 31 * 31 + lod.type * 31 + lod.detail;
+		return pos.ToHash() * 31 + lod;
 	}
 };
 
-typedef Urho3D::HashMap<Urho3D::IntVector2, ChunkLod> ViewArea;
+typedef Urho3D::HashMap<Urho3D::IntVector2, uint8_t> ViewArea;
 typedef Urho3D::HashMap<uint8_t, float> TTypesByWeight;
 typedef Urho3D::PODVector<uint8_t> TTypes;
 
@@ -86,7 +54,7 @@ struct LodBuildingTaskData : public Urho3D::RefCounted
 {
 	// Input
 	Urho3D::Context* context;
-	ChunkLod lod;
+	uint8_t lod;
 	Corners corners;
 	unsigned baseheight;
 	bool calculate_ttype_image;

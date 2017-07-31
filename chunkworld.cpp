@@ -159,7 +159,7 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 		bool everything_ready = true;
 		for (ViewArea::Iterator i = va_being_built.Begin(); i != va_being_built.End(); ++ i) {
 			Urho3D::IntVector2 pos = i->first_;
-			ChunkLod lod = i->second_;
+			uint8_t lod = i->second_;
 			Chunk* chunk = chunks[pos];
 
 			if (!chunk->prepareForLod(lod, pos)) {
@@ -185,7 +185,7 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 			// Reveal chunks
 			for (ViewArea::Iterator i = va_being_built.Begin(); i != va_being_built.End(); ++ i) {
 				Urho3D::IntVector2 const& pos = i->first_;
-				ChunkLod lod = i->second_;
+				uint8_t lod = i->second_;
 				Chunk* chunk = chunks[pos];
 
 				chunk->show(pos - va_being_built_origin, va_being_built_origin_height, lod);
@@ -256,8 +256,7 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 
 			// Add to future ViewArea object
 			unsigned lod_detail = int(Urho3D::Ln<float>(distance + 1) / Urho3D::Ln<float>(1.75));
-			ChunkLod lod(CL_CENTER, lod_detail);
-			va_being_built[pos] = lod;
+			va_being_built[pos] = lod_detail;
 		}
 	}
 

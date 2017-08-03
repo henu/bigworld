@@ -20,7 +20,7 @@ class ChunkWorld : public Urho3D::Object
 
 public:
 
-	ChunkWorld(Urho3D::Context* context, Urho3D::Scene* scene, unsigned chunk_width, float sqr_width, float heightstep, unsigned terrain_texture_repeats);
+	ChunkWorld(Urho3D::Context* context, unsigned chunk_width, float sqr_width, float heightstep, unsigned terrain_texture_repeats);
 
 	void addTerrainTexture(Urho3D::String const& name);
 
@@ -52,7 +52,7 @@ private:
 	typedef Urho3D::HashMap<uint8_t, Urho3D::SharedPtr<Urho3D::Material> > SingleLayerMaterialsCache;
 	typedef Urho3D::HashMap<Urho3D::IntVector2, Urho3D::SharedPtr<Chunk> > Chunks;
 
-	Urho3D::Scene* scene;
+	Urho3D::SharedPtr<Urho3D::Scene> scene;
 
 	// World options
 	unsigned const chunk_width;

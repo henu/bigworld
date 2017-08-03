@@ -2,6 +2,7 @@
 
 #include <Urho3D/Core/CoreEvents.h>
 #include <Urho3D/Container/HashSet.h>
+#include <Urho3D/Graphics/Octree.h>
 #include <Urho3D/Graphics/Technique.h>
 #include <Urho3D/Graphics/Texture2D.h>
 #include <Urho3D/Resource/ResourceCache.h>
@@ -11,9 +12,8 @@
 namespace BigWorld
 {
 
-ChunkWorld::ChunkWorld(Urho3D::Context* context, Urho3D::Scene* scene, unsigned chunk_width, float sqr_width, float heightstep, unsigned terrain_texture_repeats) :
+ChunkWorld::ChunkWorld(Urho3D::Context* context, unsigned chunk_width, float sqr_width, float heightstep, unsigned terrain_texture_repeats) :
 Urho3D::Object(context),
-scene(scene),
 chunk_width(chunk_width),
 sqr_width(sqr_width),
 heightstep(heightstep),
@@ -22,6 +22,9 @@ origin(0, 0),
 origin_height(0),
 viewarea_recalculation_required(false)
 {
+	scene = new Urho3D::Scene(context);
+	scene->CreateComponent<Urho3D::Octree>();
+
 	SubscribeToEvent(Urho3D::E_BEGINFRAME, URHO3D_HANDLER(ChunkWorld, handleBeginFrame));
 }
 

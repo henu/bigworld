@@ -101,6 +101,7 @@ bool Chunk::prepareForLod(uint8_t lod, Urho3D::IntVector2 const& pos)
 
 			task_workitem = NULL;
 			task_data = NULL;
+			task_mat = NULL;
 
 			return true;
 		}
@@ -110,11 +111,13 @@ bool Chunk::prepareForLod(uint8_t lod, Urho3D::IntVector2 const& pos)
 			if (task_workitem->completed_) {
 				task_workitem = NULL;
 				task_data = NULL;
+				task_mat = NULL;
 			}
 			// Try to stop task
 			else if (workqueue->RemoveWorkItem(task_workitem)) {
 				task_workitem = NULL;
 				task_data = NULL;
+				task_mat = NULL;
 			}
 			// Removing old task was not possible, so try again later
 			else {

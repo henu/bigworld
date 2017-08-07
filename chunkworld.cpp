@@ -12,7 +12,7 @@
 namespace BigWorld
 {
 
-ChunkWorld::ChunkWorld(Urho3D::Context* context, unsigned chunk_width, float sqr_width, float heightstep, unsigned terrain_texture_repeats) :
+ChunkWorld::ChunkWorld(Urho3D::Context* context, unsigned chunk_width, float sqr_width, float heightstep, unsigned terrain_texture_repeats, bool headless) :
 Urho3D::Object(context),
 chunk_width(chunk_width),
 sqr_width(sqr_width),
@@ -25,7 +25,9 @@ viewarea_recalculation_required(false)
 	scene = new Urho3D::Scene(context);
 	scene->CreateComponent<Urho3D::Octree>();
 
-	SubscribeToEvent(Urho3D::E_BEGINFRAME, URHO3D_HANDLER(ChunkWorld, handleBeginFrame));
+	if (!headless) {
+		SubscribeToEvent(Urho3D::E_BEGINFRAME, URHO3D_HANDLER(ChunkWorld, handleBeginFrame));
+	}
 }
 
 void ChunkWorld::addTerrainTexture(Urho3D::String const& name)

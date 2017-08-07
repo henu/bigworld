@@ -20,7 +20,7 @@ class ChunkWorld : public Urho3D::Object
 
 public:
 
-	ChunkWorld(Urho3D::Context* context, unsigned chunk_width, float sqr_width, float heightstep, unsigned terrain_texture_repeats);
+	ChunkWorld(Urho3D::Context* context, unsigned chunk_width, float sqr_width, float heightstep, unsigned terrain_texture_repeats, bool headless);
 
 	void addTerrainTexture(Urho3D::String const& name);
 

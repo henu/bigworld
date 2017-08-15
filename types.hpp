@@ -4,6 +4,8 @@
 #include <Urho3D/Container/HashMap.h>
 #include <Urho3D/Container/Vector.h>
 #include <Urho3D/Graphics/VertexBuffer.h>
+#include <Urho3D/IO/Deserializer.h>
+#include <Urho3D/IO/Serializer.h>
 #include <Urho3D/Math/Vector2.h>
 #include <Urho3D/Math/BoundingBox.h>
 #include <Urho3D/Resource/Image.h>
@@ -47,6 +49,30 @@ struct Corner
 {
 	uint16_t height;
 	TTypesByWeight ttypes;
+
+	inline Corner() {}
+
+	inline Corner(Urho3D::Deserializer& src)
+	{
+		height = src.ReadUShort();
+		unsigned char ttypes_size = src.ReadUByte();
+		for (unsigned i = 0; i < ttypes_size; ++ i) {
+			uint8_t ttype = src.ReadUByte();
+			float weight = src.ReadUByte() / 255.0;
+			ttypes[ttype] = weight;
+		}
+	}
+
+	inline bool write(Urho3D::Serializer& dest) const
+	{
+		if (!dest.WriteUShort(height)) return false;
+		if (!dest.WriteUByte(ttypes.Size())) return false;
+		for (TTypesByWeight::ConstIterator i = ttypes.Begin(); i != ttypes.End(); ++ i) {
+			if (!dest.WriteUByte(i->first_)) return false;
+			if (!dest.WriteUByte(Urho3D::Clamp<int>(i->second_ * 255.0 + 0.5, 0, 255))) return false;
+		}
+		return true;
+	}
 };
 typedef Urho3D::Vector<Corner> Corners;
 

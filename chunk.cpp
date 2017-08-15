@@ -75,6 +75,15 @@ Chunk::~Chunk()
 	}
 }
 
+bool Chunk::write(Urho3D::Serializer& dest) const
+{
+	for (Corners::ConstIterator i = corners.Begin(); i != corners.End(); ++ i) {
+		Corner const& c = *i;
+		if (!c.write(dest)) return false;
+	}
+	return true;
+}
+
 bool Chunk::prepareForLod(uint8_t lod, Urho3D::IntVector2 const& pos)
 {
 	// Preparation is ready when LOD can be found from loadcache

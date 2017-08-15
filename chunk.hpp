@@ -8,6 +8,7 @@
 #include <Urho3D/Graphics/Material.h>
 #include <Urho3D/Graphics/Model.h>
 #include <Urho3D/Graphics/StaticModel.h>
+#include <Urho3D/IO/Serializer.h>
 
 namespace BigWorld
 {
@@ -22,6 +23,8 @@ public:
 	Chunk(ChunkWorld* world);
 	Chunk(ChunkWorld* world, Corners const& corners);
 	virtual ~Chunk();
+
+	bool write(Urho3D::Serializer& dest) const;
 
 	// Starts preparing Chunk to be rendered with specific LOD. Should be called
 	// multiple times until returns true to indicate that preparations are ready.

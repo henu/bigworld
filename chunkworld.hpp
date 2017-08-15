@@ -40,6 +40,7 @@ public:
 	inline unsigned getOriginHeight() const { return origin_height; }
 
 	void addChunk(Urho3D::IntVector2 const& chunk_pos, Chunk* chunk);
+	void removeChunk(Urho3D::IntVector2 const& chunk_pos);
 	Chunk* getChunk(Urho3D::IntVector2 const& chunk_pos);
 
 	void extractCornersData(Corners& result, Urho3D::IntVector2 const& pos);

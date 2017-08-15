@@ -200,6 +200,15 @@ void Chunk::hide()
 	node->SetDeepEnabled(false);
 }
 
+void Chunk::removeFromWorld(void)
+{
+	node->Remove();
+	world = NULL;
+	lodcache.Clear();
+	matcache = NULL;
+	node = NULL;
+}
+
 Urho3D::Node* Chunk::createChildNode()
 {
 	Urho3D::Node* child = node->CreateChild();

@@ -36,6 +36,10 @@ public:
 	void show(Urho3D::IntVector2 const& rel_pos, unsigned origin_height, uint8_t lod);
 	void hide();
 
+	// Removes Chunk from World
+// TODO: This feels kind of hacky...
+	void removeFromWorld(void);
+
 	Urho3D::Node* createChildNode();
 
 	inline unsigned getBaseHeight() const { return baseheight; }

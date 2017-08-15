@@ -60,6 +60,18 @@ void ChunkWorld::addChunk(Urho3D::IntVector2 const& chunk_pos, Chunk* chunk)
 	viewarea_recalculation_required = true;
 }
 
+void ChunkWorld::removeChunk(Urho3D::IntVector2 const& chunk_pos)
+{
+	Chunks::Iterator chunks_find = chunks.Find(chunk_pos);
+	if (chunks_find == chunks.End()) {
+		throw std::runtime_error("There is no chunk to remove at that position!");
+	}
+	chunks_find->second_->removeFromWorld();
+	chunks.Erase(chunks_find);
+
+	viewarea_recalculation_required = true;
+}
+
 Chunk* ChunkWorld::getChunk(Urho3D::IntVector2 const& chunk_pos)
 {
 	Chunks::Iterator chunks_find = chunks.Find(chunk_pos);

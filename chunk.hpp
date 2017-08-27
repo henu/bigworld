@@ -20,8 +20,8 @@ class Chunk : public Urho3D::Object
 
 public:
 
-	Chunk(ChunkWorld* world);
-	Chunk(ChunkWorld* world, Corners const& corners);
+	Chunk(ChunkWorld* world, Urho3D::IntVector2 const& pos);
+	Chunk(ChunkWorld* world, Urho3D::IntVector2 const& pos, Corners const& corners);
 	virtual ~Chunk();
 
 	bool write(Urho3D::Serializer& dest) const;
@@ -42,6 +42,8 @@ public:
 
 	Urho3D::Node* createChildNode();
 
+	inline Urho3D::IntVector2 getPosition() const { return pos; }
+
 	inline unsigned getBaseHeight() const { return baseheight; }
 
 	inline uint16_t getHeight(unsigned x, unsigned y, unsigned chunk_w) const { return corners[x + y * chunk_w].height; }
@@ -53,6 +55,7 @@ private:
 	typedef Urho3D::HashMap<uint8_t, Urho3D::SharedPtr<Urho3D::Model> > LodCache;
 
 	ChunkWorld* world;
+	Urho3D::IntVector2 pos;
 
 	Corners corners;
 

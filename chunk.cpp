@@ -17,9 +17,10 @@
 namespace BigWorld
 {
 
-Chunk::Chunk(ChunkWorld* world) :
+Chunk::Chunk(ChunkWorld* world, Urho3D::IntVector2 const& pos) :
 Urho3D::Object(world->GetContext()),
-world(world)
+world(world),
+pos(pos)
 {
 	// Fill chunk with default corners
 	unsigned area = world->getChunkWidth() * world->getChunkWidth();
@@ -34,9 +35,10 @@ world(world)
 	node->SetDeepEnabled(false);
 }
 
-Chunk::Chunk(ChunkWorld* world, Corners const& corners) :
+Chunk::Chunk(ChunkWorld* world, Urho3D::IntVector2 const& pos, Corners const& corners) :
 Urho3D::Object(world->GetContext()),
 world(world),
+pos(pos),
 corners(corners)
 {
 	if (corners.Size() != world->getChunkWidth() * world->getChunkWidth()) {

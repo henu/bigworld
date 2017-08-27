@@ -64,7 +64,7 @@ Urho3D::SharedPtr<Urho3D::Image> calculateTerraintypeImage(TTypes& result_used_t
 
 	// If there is only one terraintype, then image is not needed
 	if (result_used_ttypes.Size() == 1) {
-		return Urho3D::SharedPtr<Urho3D::Image>(NULL);
+		return NULL;
 	}
 
 	Urho3D::SharedPtr<Urho3D::Image> img(new Urho3D::Image(context));

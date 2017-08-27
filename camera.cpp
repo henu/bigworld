@@ -38,6 +38,16 @@ void Camera::applyAbsoluteMovement(Urho3D::Vector3 const& movement)
 	updateNodeTransform();
 }
 
+void Camera::setTransform(Urho3D::IntVector2 const& chunk_pos, unsigned baseheight, Urho3D::Vector3 const& pos, float yaw, float pitch, float roll)
+{
+	this->chunk_pos = chunk_pos;
+	this->baseheight = baseheight;
+	this->pos = pos;
+	this->yaw = yaw;
+	this->pitch = pitch;
+	this->roll = roll;
+	updateNodeTransform();
+}
 
 void Camera::updateNodeTransform()
 {

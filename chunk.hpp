@@ -44,6 +44,8 @@ public:
 
 	inline unsigned getBaseHeight() const { return baseheight; }
 
+	inline uint16_t getHeight(unsigned x, unsigned y, unsigned chunk_w) const { return corners[x + y * chunk_w].height; }
+
 	void copyCornerRow(Corners& result, unsigned x, unsigned y, unsigned size);
 
 private:

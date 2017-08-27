@@ -49,8 +49,70 @@ Camera* ChunkWorld::setUpCamera(Urho3D::IntVector2 const& chunk_pos, unsigned ba
 	return camera;
 }
 
+float ChunkWorld::getHeightFloat(Urho3D::IntVector2 const& chunk_pos, Urho3D::Vector2 const& pos, unsigned baseheight) const
+{
+	Chunks::ConstIterator chunk_find = chunks.Find(chunk_pos);
+	Chunks::ConstIterator chunk_e_find = chunks.Find(chunk_pos + Urho3D::IntVector2(1, 0));
+	Chunks::ConstIterator chunk_ne_find = chunks.Find(chunk_pos + Urho3D::IntVector2(1, 1));
+	Chunks::ConstIterator chunk_n_find = chunks.Find(chunk_pos + Urho3D::IntVector2(0, 1));
+	if (chunk_find == chunks.End() || chunk_e_find == chunks.End() || chunk_ne_find == chunks.End() || chunk_n_find == chunks.End()) {
+		throw std::runtime_error("Unable to get height becaue some of required four chunks is missing!");
+	}
+
+	Chunk const* chunk = chunk_find->second_;
+	Chunk const* chunk_e = chunk_e_find->second_;
+	Chunk const* chunk_ne = chunk_ne_find->second_;
+	Chunk const* chunk_n = chunk_n_find->second_;
+
+	// Convert to squares
+	unsigned pos_i_x = Urho3D::Clamp<int>(Urho3D::FloorToInt(pos.x_ / sqr_width / chunk_width), 0, chunk_width - 1);
+	unsigned pos_i_y = Urho3D::Clamp<int>(Urho3D::FloorToInt(pos.y_ / sqr_width / chunk_width), 0, chunk_width - 1);
+	float pos_f_x = Urho3D::Clamp<float>(pos.x_ / sqr_width - pos_i_x, 0, 1);
+	float pos_f_y = Urho3D::Clamp<float>(pos.x_ / sqr_width - pos_i_x, 0, 1);
+
+	// Find heights of corners that surround the position
+	int h_sw = chunk->getHeight(pos_i_x, pos_i_y, chunk_width);
+	int h_se, h_ne, h_nw;
+	if (pos_i_x < chunk_width - 1) {
+		h_se = chunk->getHeight(pos_i_x + 1, pos_i_y, chunk_width);
+		if (pos_i_y < chunk_width - 1) {
+			h_ne = chunk->getHeight(pos_i_x + 1, pos_i_y + 1, chunk_width);
+		} else {
+			h_ne = chunk_n->getHeight(pos_i_x + 1, 0, chunk_width);
+		}
+	} else {
+		h_se = chunk_e->getHeight(0, pos_i_y, chunk_width);
+		if (pos_i_y < chunk_width - 1) {
+			h_ne = chunk_e->getHeight(0, pos_i_y + 1, chunk_width);
+		} else {
+			h_ne = chunk_ne->getHeight(0, 0, chunk_width);
+		}
+	}
+	if (pos_i_y < chunk_width - 1) {
+		h_nw = chunk->getHeight(pos_i_x, pos_i_y + 1, chunk_width);
+	} else {
+		h_nw = chunk_n->getHeight(pos_i_x, 0, chunk_width);
+	}
+
+	// Apply baseheight
+	h_sw -= baseheight;
+	h_se -= baseheight;
+	h_ne -= baseheight;
+	h_nw -= baseheight;
+
+	// Convert to floats
+	float h_sw_f = h_sw * heightstep;
+	float h_se_f = h_se * heightstep;
+	float h_ne_f = h_ne * heightstep;
+	float h_nw_f = h_nw * heightstep;
+
+// TODO: In future, consider how square is really divided into two triangles
+return Urho3D::Lerp(Urho3D::Lerp(h_sw_f, h_nw_f, pos_f_y), Urho3D::Lerp(h_se_f, h_ne_f, pos_f_y), pos_f_x);
+}
+
 void ChunkWorld::addChunk(Urho3D::IntVector2 const& chunk_pos, Chunk* chunk)
 {
+	assert(chunk);
 	if (chunks.Contains(chunk_pos)) {
 		throw std::runtime_error("Chunk at that position already exists!");
 	}

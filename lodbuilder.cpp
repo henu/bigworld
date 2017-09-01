@@ -7,15 +7,6 @@
 namespace BigWorld
 {
 
-float getTerraintypeWeight(TTypesByWeight const& weights, uint8_t ttype)
-{
-	TTypesByWeight::ConstIterator weights_find = weights.Find(ttype);
-	if (weights_find != weights.End()) {
-		return weights_find->second_;
-	}
-	return 0;
-}
-
 Urho3D::SharedPtr<Urho3D::Image> calculateTerraintypeImage(TTypes& result_used_ttypes, Urho3D::Context* context, Corners const& corners, unsigned chunk_width)
 {
 	// Precalculate some stuff
@@ -25,14 +16,14 @@ Urho3D::SharedPtr<Urho3D::Image> calculateTerraintypeImage(TTypes& result_used_t
 	// Calculate what terrains are used and how much. If there are
 	// too many of them, then the rarest ones will be ignored.
 	unsigned const MAX_TERRAINTYPES_IN_MATERIAL = 4;
-	TTypesByWeight used_ttypes;
+	Urho3D::HashMap<uint8_t, float> used_ttypes;
 	for (unsigned y = 0; y < CHUNK_W1; ++ y) {
 		unsigned ofs = 1 + (y + 1) * (CHUNK_W3);
 		for (unsigned x = 0; x < CHUNK_W1; ++ x) {
 			Corner const& corner = corners[ofs];
-			for (TTypesByWeight::ConstIterator ttype_it = corner.ttypes.Begin(); ttype_it != corner.ttypes.End(); ++ ttype_it) {
-				uint8_t ttype = ttype_it->first_;
-				float weight = ttype_it->second_;
+			for (unsigned ttypes_i = 0; ttypes_i < corner.ttypes.size(); ++ ttypes_i) {
+				uint8_t ttype = corner.ttypes.getKey(ttypes_i);
+				float weight = corner.ttypes.getValue(ttypes_i);
 				if (weight > 0) {
 					if (!used_ttypes.Contains(ttype)) {
 						used_ttypes[ttype] = 0;
@@ -47,7 +38,7 @@ Urho3D::SharedPtr<Urho3D::Image> calculateTerraintypeImage(TTypes& result_used_t
 	while (used_ttypes.Size() > MAX_TERRAINTYPES_IN_MATERIAL) {
 		float lowest_usage = 9999999;
 		unsigned lowest_usage_ttype = 0;
-		for (TTypesByWeight::Iterator it = used_ttypes.Begin(); it != used_ttypes.End(); ++ it) {
+		for (Urho3D::HashMap<uint8_t, float>::Iterator it = used_ttypes.Begin(); it != used_ttypes.End(); ++ it) {
 			if (it->second_ < lowest_usage) {
 				lowest_usage = it->second_;
 				lowest_usage_ttype = it->first_;
@@ -57,7 +48,7 @@ Urho3D::SharedPtr<Urho3D::Image> calculateTerraintypeImage(TTypes& result_used_t
 	}
 	assert(result_used_ttypes.Empty());
 	result_used_ttypes.Reserve(used_ttypes.Size());
-	for (TTypesByWeight::Iterator i = used_ttypes.Begin(); i != used_ttypes.End(); ++ i) {
+	for (Urho3D::HashMap<uint8_t, float>::Iterator i = used_ttypes.Begin(); i != used_ttypes.End(); ++ i) {
 		result_used_ttypes.Push(i->first_);
 	}
 	assert(!result_used_ttypes.Empty());
@@ -84,15 +75,15 @@ Urho3D::SharedPtr<Urho3D::Image> calculateTerraintypeImage(TTypes& result_used_t
 			assert(result_used_ttypes.Size() >= 2);
 			assert(result_used_ttypes.Size() <= 4);
 
-			float w0 = getTerraintypeWeight(ttypes, result_used_ttypes[0]);
-			float w1 = getTerraintypeWeight(ttypes, result_used_ttypes[1]);
+			float w0 = ttypes[result_used_ttypes[0]];
+			float w1 = ttypes[result_used_ttypes[1]];
 			float w2 = 0;
 			float w3 = 0;
 			if (result_used_ttypes.Size() >= 3) {
-				w2 = getTerraintypeWeight(ttypes, result_used_ttypes[2]);
+				w2 = ttypes[result_used_ttypes[2]];
 			}
 			if (result_used_ttypes.Size() >= 4) {
-				w3 = getTerraintypeWeight(ttypes, result_used_ttypes[3]);
+				w3 = ttypes[result_used_ttypes[3]];
 			}
 			float total = w0 + w1 + w2 + w3;
 			if (total == 0) {
@@ -162,9 +153,9 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 		unsigned ofs = 1 + (y + 1) * (CHUNK_W3);
 		for (unsigned x = 0; x < CHUNK_W1 && ttype_check.Size() <= 1; ++ x) {
 			Corner const& corner = data->corners[ofs];
-			for (TTypesByWeight::ConstIterator ttype_it = corner.ttypes.Begin(); ttype_it != corner.ttypes.End(); ++ ttype_it) {
-				uint8_t ttype = ttype_it->first_;
-				float weight = ttype_it->second_;
+			for (unsigned ttypes_i = 0; ttypes_i < corner.ttypes.size(); ++ ttypes_i) {
+				uint8_t ttype = corner.ttypes.getKey(ttypes_i);
+				float weight = corner.ttypes.getValue(ttypes_i);
 				if (weight > 0) {
 					ttype_check.Insert(ttype);
 					if (ttype_check.Size() > 1) {

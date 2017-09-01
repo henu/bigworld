@@ -41,8 +41,147 @@ struct ChunkPosAndLod
 	}
 };
 
+class TTypesByWeight
+{
+
+public:
+
+	inline TTypesByWeight() :
+	buf(NULL),
+	buf_size(0)
+	{
+	}
+
+	inline TTypesByWeight(TTypesByWeight const& ttypes) :
+	buf_size(ttypes.buf_size)
+	{
+		if (buf_size) {
+			buf = new uint8_t[buf_size];
+			memcpy(buf, ttypes.buf, buf_size);
+		}
+	}
+
+	inline TTypesByWeight& operator=(TTypesByWeight const& ttypes)
+	{
+		if (buf_size != ttypes.buf_size) {
+			buf_size = ttypes.buf_size;
+			delete[] buf;
+			if (buf_size) {
+				buf = new uint8_t[buf_size];
+			} else {
+				buf = NULL;
+			}
+		}
+		if (buf_size) {
+			memcpy(buf, ttypes.buf, buf_size);
+		}
+		return *this;
+	}
+
+	inline ~TTypesByWeight()
+	{
+		if (buf_size > 0) {
+			delete[] buf;
+		}
+	}
+
+	inline void initRawFill(uint8_t size)
+	{
+		if (size) {
+			buf = new uint8_t[size * 2];
+		} else {
+			buf = NULL;
+		}
+		buf_size = 0;
+	}
+
+	inline void rawFillByte(uint8_t key, uint8_t val)
+	{
+		buf[buf_size ++] = key;
+		buf[buf_size ++] = val;
+	}
+
+	inline void set(uint8_t key, float val)
+	{
+		uint8_t byte_val = Urho3D::Clamp<int>(val * 255.0 + 0.5, 0, 255);
+		for (unsigned i = 0; i < buf_size; i += 2) {
+			if (buf[i] == key) {
+				// Default case
+				if (byte_val > 0) {
+					buf[i + 1] = byte_val;
+				}
+				// Special case: Setting to zero means clear
+				else {
+					if (buf_size == 2) {
+						delete[] buf;
+						buf = NULL;
+						buf_size = 0;
+					} else {
+						uint8_t* new_buf = new uint8_t[buf_size - 2];
+						memcpy(new_buf, buf, i);
+						memcpy(new_buf + i, buf + i + 2, buf_size - 2 - i);
+						delete[] buf;
+						buf = new_buf;
+						buf_size -= 2;
+					}
+				}
+				return;
+			}
+		}
+		// Special case: Do nothing if zero
+		if (byte_val == 0) {
+			return;
+		}
+		uint8_t* new_buf = new uint8_t[buf_size + 2];
+		memcpy(new_buf, buf, buf_size);
+		delete[] buf;
+		buf = new_buf;
+		new_buf[buf_size ++] = key;
+		new_buf[buf_size ++] = byte_val;
+	}
+
+	inline float operator[](uint8_t key) const
+	{
+		for (unsigned i = 0; i < buf_size; i += 2) {
+			if (buf[i] == key) {
+				return buf[i + 1] / 255.0;
+			}
+		}
+		return 0;
+	}
+
+	inline uint8_t size() const
+	{
+		return buf_size / 2;
+	}
+
+	inline bool empty() const
+	{
+		return buf_size == 0;
+	}
+
+	inline uint8_t getKey(uint8_t idx) const
+	{
+		return buf[idx * 2];
+	}
+
+	inline float getValue(uint8_t idx) const
+	{
+		return getValueByte(idx) / 255.0;
+	}
+
+	inline uint8_t getValueByte(uint8_t idx) const
+	{
+		return buf[idx * 2 + 1];
+	}
+
+private:
+
+	uint8_t* buf;
+	uint8_t buf_size;
+};
+
 typedef Urho3D::HashMap<Urho3D::IntVector2, uint8_t> ViewArea;
-typedef Urho3D::HashMap<uint8_t, float> TTypesByWeight;
 typedef Urho3D::PODVector<uint8_t> TTypes;
 
 struct Corner
@@ -56,20 +195,21 @@ struct Corner
 	{
 		height = src.ReadUShort();
 		unsigned char ttypes_size = src.ReadUByte();
+		ttypes.initRawFill(ttypes_size);
 		for (unsigned i = 0; i < ttypes_size; ++ i) {
 			uint8_t ttype = src.ReadUByte();
-			float weight = src.ReadUByte() / 255.0;
-			ttypes[ttype] = weight;
+			uint8_t weight_b = src.ReadUByte();
+			ttypes.rawFillByte(ttype, weight_b);
 		}
 	}
 
 	inline bool write(Urho3D::Serializer& dest) const
 	{
 		if (!dest.WriteUShort(height)) return false;
-		if (!dest.WriteUByte(ttypes.Size())) return false;
-		for (TTypesByWeight::ConstIterator i = ttypes.Begin(); i != ttypes.End(); ++ i) {
-			if (!dest.WriteUByte(i->first_)) return false;
-			if (!dest.WriteUByte(Urho3D::Clamp<int>(i->second_ * 255.0 + 0.5, 0, 255))) return false;
+		if (!dest.WriteUByte(ttypes.size())) return false;
+		for (unsigned i = 0; i < ttypes.size(); ++ i) {
+			if (!dest.WriteUByte(ttypes.getKey(i))) return false;
+			if (!dest.WriteUByte(ttypes.getValueByte(i))) return false;
 		}
 		return true;
 	}

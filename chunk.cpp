@@ -26,7 +26,7 @@ pos(pos)
 	unsigned area = world->getChunkWidth() * world->getChunkWidth();
 	Corner default_corner;
 	default_corner.height = 0;
-	default_corner.ttypes[0] = 1;
+	default_corner.ttypes.set(0, 1);
 	corners.Resize(area, default_corner);
 
 	baseheight = 0;
@@ -48,7 +48,7 @@ corners(corners)
 	unsigned long average_height = 0;
 	for (Corners::ConstIterator it = corners.Begin(); it != corners.End(); ++ it) {
 		average_height += it->height;
-		if (it->ttypes.Empty()) {
+		if (it->ttypes.empty()) {
 			throw std::runtime_error("Every corner of Chunk must have at least one terraintype!");
 		}
 	}

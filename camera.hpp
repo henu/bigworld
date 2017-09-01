@@ -41,6 +41,7 @@ public:
 	inline void setRoll(float angle) { roll = angle; updateNodeTransform(); }
 
 	void setTransform(Urho3D::IntVector2 const& chunk_pos, unsigned baseheight, Urho3D::Vector3 const& pos, float yaw, float pitch, float roll);
+	void setRotation(float yaw, float pitch, float roll);
 
 	// Called automatically
 	void updateNodeTransform();

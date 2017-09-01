@@ -58,6 +58,14 @@ void Camera::setTransform(Urho3D::IntVector2 const& chunk_pos, unsigned baseheig
 	updateNodeTransform();
 }
 
+void Camera::setRotation(float yaw, float pitch, float roll)
+{
+	this->yaw = yaw;
+	this->pitch = pitch;
+	this->roll = roll;
+	updateNodeTransform();
+}
+
 void Camera::updateNodeTransform()
 {
 	float const CHUNK_W_F = world->getChunkWidthFloat();

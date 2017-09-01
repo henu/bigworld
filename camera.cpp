@@ -40,9 +40,18 @@ void Camera::applyAbsoluteMovement(Urho3D::Vector3 const& movement)
 
 void Camera::setTransform(Urho3D::IntVector2 const& chunk_pos, unsigned baseheight, Urho3D::Vector3 const& pos, float yaw, float pitch, float roll)
 {
-	this->chunk_pos = chunk_pos;
-	this->baseheight = baseheight;
-	this->pos = pos;
+	float const CHUNK_W_F = world->getChunkWidthFloat();
+	float const HEIGHTSTEP = world->getHeightstep();
+
+	// Only update position for now
+// TODO: Fix this in future! Right now it causes some strange problems where viewarea building is started at every frame.
+	Urho3D::Vector3 pos_diff = pos - this->pos;
+	pos_diff.x_ += (chunk_pos.x_ - this->chunk_pos.x_) * CHUNK_W_F;
+	pos_diff.z_ += (chunk_pos.y_ - this->chunk_pos.y_) * CHUNK_W_F;
+	pos_diff.y_ += (int(baseheight) - int(this->baseheight)) * HEIGHTSTEP;
+
+	this->pos += pos_diff;
+
 	this->yaw = yaw;
 	this->pitch = pitch;
 	this->roll = roll;

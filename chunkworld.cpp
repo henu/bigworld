@@ -132,6 +132,9 @@ void ChunkWorld::removeChunk(Urho3D::IntVector2 const& chunk_pos)
 	chunks.Erase(chunks_find);
 
 	viewarea_recalculation_required = true;
+
+	// It might not be possible toi build the viewarea anymore, as one chunk might be missing.
+	va_being_built.Clear();
 }
 
 Chunk* ChunkWorld::getChunk(Urho3D::IntVector2 const& chunk_pos)
@@ -239,6 +242,7 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 		for (ViewArea::Iterator i = va_being_built.Begin(); i != va_being_built.End(); ++ i) {
 			Urho3D::IntVector2 pos = i->first_;
 			uint8_t lod = i->second_;
+			assert(chunks.Contains(pos));
 			Chunk* chunk = chunks[pos];
 
 			if (!chunk->prepareForLod(lod, pos)) {
@@ -275,8 +279,10 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 			// Hide old chunks
 			for (Urho3D::HashSet<Urho3D::IntVector2>::Iterator i = old_chunks.Begin(); i != old_chunks.End(); ++ i) {
 				Urho3D::IntVector2 const& pos = *i;
-				Chunk* chunk = chunks[pos];
-				chunk->hide();
+				Chunks::Iterator chunks_find = chunks.Find(pos);
+				if (chunks_find != chunks.End()) {
+					chunks_find->second_->hide();
+				}
 			}
 
 			// Mark process complete

@@ -20,8 +20,8 @@ class Chunk : public Urho3D::Object
 
 public:
 
-	Chunk(ChunkWorld* world, Urho3D::IntVector2 const& pos);
-	Chunk(ChunkWorld* world, Urho3D::IntVector2 const& pos, Corners const& corners);
+	// Please note, that the content of "corners" will be cleared.
+	Chunk(ChunkWorld* world, Urho3D::IntVector2 const& pos, Corners& corners);
 	virtual ~Chunk();
 
 	bool write(Urho3D::Serializer& dest) const;

@@ -85,6 +85,13 @@ public:
 		}
 	}
 
+	inline void rawFill(Urho3D::Deserializer& src, uint8_t size)
+	{
+		buf_size = size * 2;
+		buf = new uint8_t[buf_size];
+		src.Read(buf, buf_size);
+	}
+
 	inline void initRawFill(uint8_t size)
 	{
 		if (size) {
@@ -195,12 +202,7 @@ struct Corner
 	{
 		height = src.ReadUShort();
 		unsigned char ttypes_size = src.ReadUByte();
-		ttypes.initRawFill(ttypes_size);
-		for (unsigned i = 0; i < ttypes_size; ++ i) {
-			uint8_t ttype = src.ReadUByte();
-			uint8_t weight_b = src.ReadUByte();
-			ttypes.rawFillByte(ttype, weight_b);
-		}
+		ttypes.rawFill(src, ttypes_size);
 	}
 
 	inline bool write(Urho3D::Serializer& dest) const

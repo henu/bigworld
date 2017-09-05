@@ -17,42 +17,27 @@
 namespace BigWorld
 {
 
-Chunk::Chunk(ChunkWorld* world, Urho3D::IntVector2 const& pos) :
+Chunk::Chunk(ChunkWorld* world, Urho3D::IntVector2 const& pos, Corners& corners) :
 Urho3D::Object(world->GetContext()),
 world(world),
 pos(pos)
 {
-	// Fill chunk with default corners
-	unsigned area = world->getChunkWidth() * world->getChunkWidth();
-	Corner default_corner;
-	default_corner.height = 0;
-	default_corner.ttypes.set(0, 1);
-	corners.Resize(area, default_corner);
-
-	baseheight = 0;
-
-	node = world->getScene()->CreateChild();
-	node->SetDeepEnabled(false);
-}
-
-Chunk::Chunk(ChunkWorld* world, Urho3D::IntVector2 const& pos, Corners const& corners) :
-Urho3D::Object(world->GetContext()),
-world(world),
-pos(pos),
-corners(corners)
-{
 	if (corners.Size() != world->getChunkWidth() * world->getChunkWidth()) {
 		throw std::runtime_error("Array of corners has invalid size!");
 	}
+
+	// Fast way to "copy" corners
+	this->corners.Swap(corners);
+
 	// Use average height as baseheight. Also check validity of corners
 	unsigned long average_height = 0;
-	for (Corners::ConstIterator it = corners.Begin(); it != corners.End(); ++ it) {
+	for (Corners::ConstIterator it = this->corners.Begin(); it != this->corners.End(); ++ it) {
 		average_height += it->height;
 		if (it->ttypes.empty()) {
 			throw std::runtime_error("Every corner of Chunk must have at least one terraintype!");
 		}
 	}
-	average_height /= corners.Size();
+	average_height /= this->corners.Size();
 	baseheight = average_height;
 
 	node = world->getScene()->CreateChild();

@@ -345,7 +345,7 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 			}
 
 			// Add to future ViewArea object
-			unsigned lod_detail = Urho3D::Max(0, int(Urho3D::Ln<float>(distance + 0.25) / Urho3D::Ln<float>(1.75)));
+			unsigned lod_detail = distance / 12;
 			va_being_built[pos] = lod_detail;
 		}
 	}

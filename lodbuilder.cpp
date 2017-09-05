@@ -227,17 +227,35 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 	// Create index data
 	for (unsigned y = 0; y < CHUNK_W / step; ++ y) {
 		ofs = y * (CHUNK_W / step + 1);
+		unsigned ofs2 = 1 + (y * step + 1) * CHUNK_W3;
 		for (unsigned x = 0; x < CHUNK_W / step; ++ x) {
 
-			data->idxs_data.Push(ofs);
-			data->idxs_data.Push(ofs + 1 + CHUNK_W / step + 1);
-			data->idxs_data.Push(ofs + 1);
+			// Get heights of corners to decide how
+			// square should be splitted to triangles.
+			int h_sw = data->corners[ofs2].height;
+			int h_se = data->corners[ofs2 + step].height;
+			int h_ne = data->corners[ofs2 + step + CHUNK_W3 * step].height;
+			int h_nw = data->corners[ofs2 + CHUNK_W3 * step].height;
 
-			data->idxs_data.Push(ofs);
-			data->idxs_data.Push(ofs + CHUNK_W / step + 1);
-			data->idxs_data.Push(ofs + 1 + CHUNK_W / step + 1);
+			// Use diagonal that has smaller height difference
+			if (abs(h_sw - h_ne) < abs(h_se - h_nw)) {
+				data->idxs_data.Push(ofs);
+				data->idxs_data.Push(ofs + 1 + CHUNK_W / step + 1);
+				data->idxs_data.Push(ofs + 1);
+				data->idxs_data.Push(ofs);
+				data->idxs_data.Push(ofs + CHUNK_W / step + 1);
+				data->idxs_data.Push(ofs + 1 + CHUNK_W / step + 1);
+			} else {
+				data->idxs_data.Push(ofs);
+				data->idxs_data.Push(ofs + CHUNK_W / step + 1);
+				data->idxs_data.Push(ofs + 1);
+				data->idxs_data.Push(ofs + CHUNK_W / step + 1);
+				data->idxs_data.Push(ofs + 1 + CHUNK_W / step + 1);
+				data->idxs_data.Push(ofs + 1);
+			}
 
 			++ ofs;
+			ofs2 += step;
 		}
 	}
 

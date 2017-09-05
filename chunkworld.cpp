@@ -1,6 +1,7 @@
 #include "chunkworld.hpp"
 
 #include <Urho3D/Core/CoreEvents.h>
+#include <Urho3D/Core/Profiler.h>
 #include <Urho3D/Container/HashSet.h>
 #include <Urho3D/Graphics/Octree.h>
 #include <Urho3D/Graphics/Technique.h>
@@ -124,6 +125,8 @@ void ChunkWorld::addChunk(Urho3D::IntVector2 const& chunk_pos, Chunk* chunk)
 
 void ChunkWorld::removeChunk(Urho3D::IntVector2 const& chunk_pos)
 {
+	URHO3D_PROFILE(ChunkWorldRemoveChunk);
+
 	Chunks::Iterator chunks_find = chunks.Find(chunk_pos);
 	if (chunks_find == chunks.End()) {
 		throw std::runtime_error("There is no chunk to remove at that position!");
@@ -227,6 +230,8 @@ Urho3D::Material* ChunkWorld::getSingleLayerTerrainMaterial(uint8_t ttype)
 
 void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantMap& eventData)
 {
+	URHO3D_PROFILE(ManageChunkWorldBuilding);
+
 	(void)eventType;
 	(void)eventData;
 

@@ -3,6 +3,7 @@
 #include "chunkworld.hpp"
 #include "lodbuilder.hpp"
 
+#include <Urho3D/Core/Profiler.h>
 #include <Urho3D/Graphics/Geometry.h>
 #include <Urho3D/Graphics/IndexBuffer.h>
 #include <Urho3D/Graphics/Model.h>
@@ -189,6 +190,7 @@ void Chunk::hide()
 
 void Chunk::removeFromWorld(void)
 {
+	URHO3D_PROFILE(ChunkRemoveFromWorld);
 	node->Remove();
 	world = NULL;
 	lodcache.Clear();

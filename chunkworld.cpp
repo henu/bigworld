@@ -237,6 +237,7 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 
 	// If there is new viewarea being applied, then check if everything is ready
 	if (!va_being_built.Empty()) {
+		URHO3D_PROFILE(CheckIfViewareaIsReady);
 
 		// Sometimes preparing takes lots of time. Use timer to
 		// stop preparations if too much time is being spent.
@@ -314,43 +315,48 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 		return;
 	}
 
-	// Viewarea requires recalculation. Form new Viewarea object.
-	va_being_built.Clear();
-	va_being_built_origin = camera->getChunkPosition();
-	va_being_built_origin_height = camera->getBaseHeight();
-	va_being_built_view_distance_in_chunks = camera->getViewDistanceInChunks();
+	{
+		URHO3D_PROFILE(FinishViewareaRebuilding);
 
-	// Go viewarea through
-	Urho3D::IntVector2 it;
-	for (it.y_ = -va_being_built_view_distance_in_chunks; it.y_ <= int(va_being_built_view_distance_in_chunks); ++ it.y_) {
-		for (it.x_ = -va_being_built_view_distance_in_chunks; it.x_ <= int(va_being_built_view_distance_in_chunks); ++ it.x_) {
-			// If too far away
-			float distance = it.Length();
-			if (distance > va_being_built_view_distance_in_chunks) {
-				continue;
+		// Viewarea requires recalculation. Form new Viewarea object.
+		va_being_built.Clear();
+		va_being_built_origin = camera->getChunkPosition();
+		va_being_built_origin_height = camera->getBaseHeight();
+		va_being_built_view_distance_in_chunks = camera->getViewDistanceInChunks();
+
+		// Go viewarea through
+		Urho3D::IntVector2 it;
+		for (it.y_ = -va_being_built_view_distance_in_chunks; it.y_ <= int(va_being_built_view_distance_in_chunks); ++ it.y_) {
+			for (it.x_ = -va_being_built_view_distance_in_chunks; it.x_ <= int(va_being_built_view_distance_in_chunks); ++ it.x_) {
+				// If too far away
+				float distance = it.Length();
+				if (distance > va_being_built_view_distance_in_chunks) {
+					continue;
+				}
+
+				Urho3D::IntVector2 pos = va_being_built_origin + it;
+
+				// If Chunk or any of it's neighbors (except southwestern) is missing, then skip this
+				if (!chunks.Contains(pos) ||
+					!chunks.Contains(pos + Urho3D::IntVector2(-1, 0)) ||
+					!chunks.Contains(pos + Urho3D::IntVector2(-1, 1)) ||
+					!chunks.Contains(pos + Urho3D::IntVector2(0, 1)) ||
+					!chunks.Contains(pos + Urho3D::IntVector2(1, 1)) ||
+					!chunks.Contains(pos + Urho3D::IntVector2(1, 0)) ||
+					!chunks.Contains(pos + Urho3D::IntVector2(1, -1)) ||
+					!chunks.Contains(pos + Urho3D::IntVector2(0, -1))) {
+					continue;
+				}
+
+				// Add to future ViewArea object
+				unsigned lod_detail = distance / 12;
+				va_being_built[pos] = lod_detail;
 			}
-
-			Urho3D::IntVector2 pos = va_being_built_origin + it;
-
-			// If Chunk or any of it's neighbors (except southwestern) is missing, then skip this
-			if (!chunks.Contains(pos) ||
-			    !chunks.Contains(pos + Urho3D::IntVector2(-1, 0)) ||
-			    !chunks.Contains(pos + Urho3D::IntVector2(-1, 1)) ||
-			    !chunks.Contains(pos + Urho3D::IntVector2(0, 1)) ||
-			    !chunks.Contains(pos + Urho3D::IntVector2(1, 1)) ||
-			    !chunks.Contains(pos + Urho3D::IntVector2(1, 0)) ||
-			    !chunks.Contains(pos + Urho3D::IntVector2(1, -1)) ||
-			    !chunks.Contains(pos + Urho3D::IntVector2(0, -1))) {
-				continue;
-			}
-
-			// Add to future ViewArea object
-			unsigned lod_detail = distance / 12;
-			va_being_built[pos] = lod_detail;
 		}
-	}
 
-	viewarea_recalculation_required = false;
+		viewarea_recalculation_required = false;
+
+	}
 }
 
 }

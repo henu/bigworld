@@ -25,6 +25,7 @@ public:
 	virtual ~Chunk();
 
 	bool write(Urho3D::Serializer& dest) const;
+	bool static writeWithoutObject(Urho3D::Serializer& dest, Corners const& corners);
 
 	// Starts preparing Chunk to be rendered with specific LOD. Should be called
 	// multiple times until returns true to indicate that preparations are ready.
@@ -47,6 +48,8 @@ public:
 	inline unsigned getBaseHeight() const { return baseheight; }
 
 	inline uint16_t getHeight(unsigned x, unsigned y, unsigned chunk_w) const { return corners[x + y * chunk_w].height; }
+
+	inline Corners const& getCorners() const { return corners; }
 
 	void copyCornerRow(Corners& result, unsigned x, unsigned y, unsigned size);
 

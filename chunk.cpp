@@ -65,6 +65,11 @@ Chunk::~Chunk()
 
 bool Chunk::write(Urho3D::Serializer& dest) const
 {
+	return writeWithoutObject(dest, corners);
+}
+
+bool Chunk::writeWithoutObject(Urho3D::Serializer& dest, Corners const& corners)
+{
 	for (Corners::ConstIterator i = corners.Begin(); i != corners.End(); ++ i) {
 		Corner const& c = *i;
 		if (!c.write(dest)) return false;

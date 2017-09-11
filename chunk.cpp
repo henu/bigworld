@@ -210,6 +210,12 @@ Urho3D::Node* Chunk::createChildNode()
 	return child;
 }
 
+void Chunk::moveChildNodeFrom(Urho3D::Node* child)
+{
+	child->SetParent(node);
+	child->SetEnabled(node->IsEnabled());
+}
+
 void Chunk::copyCornerRow(Corners& result, unsigned x, unsigned y, unsigned size)
 {
 	unsigned chunk_w = world->getChunkWidth();

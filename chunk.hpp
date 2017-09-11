@@ -43,6 +43,9 @@ public:
 
 	Urho3D::Node* createChildNode();
 
+	// Moves child node from another Chunk to this one.
+	void moveChildNodeFrom(Urho3D::Node* child);
+
 	inline Urho3D::IntVector2 getPosition() const { return pos; }
 
 	inline unsigned getBaseHeight() const { return baseheight; }

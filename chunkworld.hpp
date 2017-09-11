@@ -36,6 +36,8 @@ public:
 	inline unsigned getTerrainTextureRepeats() const { return terrain_texture_repeats; }
 	inline Urho3D::String getTerrainTextureName(uint8_t ttype) const { return texs_names[ttype]; }
 
+	inline bool isHeadless() const { return headless; }
+
 	float getHeightFloat(Urho3D::IntVector2 const& chunk_pos, Urho3D::Vector2 const& pos, unsigned baseheight) const;
 
 	inline Urho3D::IntVector2 getOrigin() const { return origin; }
@@ -63,6 +65,8 @@ private:
 	float const heightstep;
 	unsigned const terrain_texture_repeats;
 	Urho3D::Vector<Urho3D::String> texs_names;
+
+	bool headless;
 
 	SingleLayerMaterialsCache mats_cache;
 

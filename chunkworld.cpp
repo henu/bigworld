@@ -19,6 +19,7 @@ chunk_width(chunk_width),
 sqr_width(sqr_width),
 heightstep(heightstep),
 terrain_texture_repeats(terrain_texture_repeats),
+headless(headless),
 origin(0, 0),
 origin_height(0),
 viewarea_recalculation_required(false)

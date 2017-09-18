@@ -67,10 +67,12 @@ float ChunkWorld::getHeightFloat(Urho3D::IntVector2 const& chunk_pos, Urho3D::Ve
 	Chunk const* chunk_n = chunk_n_find->second_;
 
 	// Convert to squares
-	unsigned pos_i_x = Urho3D::Clamp<int>(Urho3D::FloorToInt(pos.x_ / sqr_width / chunk_width), 0, chunk_width - 1);
-	unsigned pos_i_y = Urho3D::Clamp<int>(Urho3D::FloorToInt(pos.y_ / sqr_width / chunk_width), 0, chunk_width - 1);
-	float pos_f_x = Urho3D::Clamp<float>(pos.x_ / sqr_width - pos_i_x, 0, 1);
-	float pos_f_y = Urho3D::Clamp<float>(pos.x_ / sqr_width - pos_i_x, 0, 1);
+	float pos_x_moved = pos.x_ + chunk_width * sqr_width * 0.5;
+	float pos_y_moved = pos.y_ + chunk_width * sqr_width * 0.5;
+	unsigned pos_i_x = Urho3D::Clamp<int>(Urho3D::FloorToInt(pos_x_moved / sqr_width), 0, chunk_width - 1);
+	unsigned pos_i_y = Urho3D::Clamp<int>(Urho3D::FloorToInt(pos_y_moved / sqr_width), 0, chunk_width - 1);
+	float pos_f_x = Urho3D::Clamp<float>(pos_x_moved / sqr_width - pos_i_x, 0, 1);
+	float pos_f_y = Urho3D::Clamp<float>(pos_y_moved / sqr_width - pos_i_y, 0, 1);
 
 	// Find heights of corners that surround the position
 	int h_sw = chunk->getHeight(pos_i_x, pos_i_y, chunk_width);

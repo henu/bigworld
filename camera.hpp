@@ -2,6 +2,7 @@
 #define BIGWORLD_CAMERA_HPP
 
 #include <Urho3D/Container/RefCounted.h>
+#include <Urho3D/Graphics/Camera.h>
 #include <Urho3D/Math/Vector2.h>
 #include <Urho3D/Math/Vector3.h>
 #include <Urho3D/Scene/Scene.h>
@@ -20,9 +21,11 @@ public:
 
 	inline Urho3D::IntVector2 getChunkPosition() const { return chunk_pos; }
 	inline unsigned getBaseHeight() const { return baseheight; }
+	inline Urho3D::Vector3 getPosition() const { return pos; }
 	inline unsigned getViewDistanceInChunks() const { return viewdistance_in_chunks; }
 
 	inline Urho3D::Node* getNode() const { return node; }
+	inline Urho3D::Camera* getRawCamera() const { return camera_raw; }
 	Urho3D::Quaternion getRotation() const;
 
 	void applyRelativeMovement(Urho3D::Vector3 const& movement);
@@ -43,10 +46,15 @@ public:
 	void setTransform(Urho3D::IntVector2 const& chunk_pos, unsigned baseheight, Urho3D::Vector3 const& pos, float yaw, float pitch, float roll);
 	void setRotation(float yaw, float pitch, float roll);
 
+	void setNearAndFarClip(float near, float far);
+
 	// Called automatically
 	void updateNodeTransform();
 
 	bool fixIfOutsideOrigin();
+
+	// Called by ChunkWorld
+	Urho3D::Camera* createWaterReflectionCamera();
 
 private:
 
@@ -60,6 +68,9 @@ private:
 	unsigned viewdistance_in_chunks;
 
 	Urho3D::Node* node;
+
+	Urho3D::Camera* camera_raw;
+	Urho3D::Camera* water_refl_camera_raw;
 };
 
 }

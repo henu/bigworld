@@ -3,6 +3,7 @@
 #include <Urho3D/Core/CoreEvents.h>
 #include <Urho3D/Core/Profiler.h>
 #include <Urho3D/Container/HashSet.h>
+#include <Urho3D/Graphics/Graphics.h>
 #include <Urho3D/Graphics/Octree.h>
 #include <Urho3D/Graphics/Technique.h>
 #include <Urho3D/Graphics/Texture2D.h>
@@ -20,6 +21,10 @@ sqr_width(sqr_width),
 heightstep(heightstep),
 terrain_texture_repeats(terrain_texture_repeats),
 headless(headless),
+water_refl(false),
+water_baseheight(0),
+water_height(0),
+water_node(NULL),
 origin(0, 0),
 origin_height(0),
 viewarea_recalculation_required(false)
@@ -49,6 +54,57 @@ Camera* ChunkWorld::setUpCamera(Urho3D::IntVector2 const& chunk_pos, unsigned ba
 	viewarea_recalculation_required = true;
 
 	return camera;
+}
+
+void ChunkWorld::setUpWaterReflection(unsigned baseheight, float height, Urho3D::Material* water_material, float water_plane_width, unsigned water_viewmask)
+{
+	if (water_refl) {
+		throw std::runtime_error("Water reflection can be set up only once!");
+	}
+	if (!camera) {
+		throw std::runtime_error("Camera must be set up before water reflection can be created!");
+	}
+
+	unsigned const REFL_TEX_SIZE = 1024;
+
+	Urho3D::ResourceCache* resources = GetSubsystem<Urho3D::ResourceCache>();
+
+	water_refl = true;
+	water_baseheight = baseheight;
+	water_height = height;
+
+	// Water plane
+	water_node = scene->CreateChild("Water");
+	water_node->SetScale(Urho3D::Vector3(water_plane_width / 2.0f, 1, water_plane_width / 2.0f));
+	water_node->SetPosition(Urho3D::Vector3(0, 0, 0));
+	Urho3D::StaticModel* water = water_node->CreateComponent<Urho3D::StaticModel>();
+	water->SetModel(resources->GetResource<Urho3D::Model>("Models/Plane.mdl"));
+	water->SetMaterial(water_material);
+	// Use viewmask to hide water from reflection camera
+	water->SetViewMask(water_viewmask);
+// TODO: What about water plane from under the water?
+
+	// Create camera for water reflection
+	// It will have the same farclip and position as the main viewport camera, but uses a reflection plane to modify
+	// its position when rendering
+	water_refl_camera = camera->createWaterReflectionCamera();
+	water_refl_camera->SetViewMask(0xffffffff ^ water_viewmask); // Use viewmask to hide water plane
+	water_refl_camera->SetAutoAspectRatio(false);
+	water_refl_camera->SetUseReflection(true);
+	water_refl_camera->SetUseClipping(true); // Enable clipping of geometry behind water plane
+	water_refl_camera->SetViewOverrideFlags(Urho3D::VO_DISABLE_SHADOWS);
+
+	// Create a texture and setup viewport for water reflection. Assign the
+	// reflection texture to the diffuse texture unit of the water material
+	Urho3D::SharedPtr<Urho3D::Texture2D> refl_render_tex(new Urho3D::Texture2D(context_));
+	refl_render_tex->SetSize(REFL_TEX_SIZE, REFL_TEX_SIZE, Urho3D::Graphics::GetRGBFormat(), Urho3D::TEXTURE_RENDERTARGET);
+	refl_render_tex->SetFilterMode(Urho3D::FILTER_BILINEAR);
+	Urho3D::RenderSurface* surface = refl_render_tex->GetRenderSurface();
+	Urho3D::SharedPtr<Urho3D::Viewport> refl_viewport(new Urho3D::Viewport(context_, scene, water_refl_camera));
+	surface->SetViewport(0, refl_viewport);
+	water_material->SetTexture(Urho3D::TU_DIFFUSE, refl_render_tex);
+
+	updateWaterReflection();
 }
 
 float ChunkWorld::getHeightFloat(Urho3D::IntVector2 const& chunk_pos, Urho3D::Vector2 const& pos, unsigned baseheight) const
@@ -309,6 +365,10 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 		return;
 	}
 
+	if (water_refl) {
+		updateWaterReflection();
+	}
+
 	// Check if camera has moved away from origin
 	if (camera->fixIfOutsideOrigin()) {
 		viewarea_recalculation_required = true;
@@ -360,6 +420,25 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 		viewarea_recalculation_required = false;
 
 	}
+}
+
+void ChunkWorld::updateWaterReflection()
+{
+	// Update water node position
+	int baseheight = int(water_baseheight) - int(origin_height);
+	float height = water_height + baseheight * heightstep;
+	water_node->SetPosition(Urho3D::Vector3(0, height, 0));
+
+	// Create a mathematical plane to represent the water in calculations
+	Urho3D::Plane water_refl_plane = Urho3D::Plane(water_node->GetWorldRotation() * Urho3D::Vector3::UP, water_node->GetWorldPosition());
+	// Create a downward biased plane for reflection view clipping. Biasing is necessary to avoid too aggressive clipping
+	Urho3D::Plane water_clip_plane = Urho3D::Plane(water_node->GetWorldRotation() * Urho3D::Vector3::UP, water_node->GetWorldPosition() + Urho3D::Vector3::DOWN);
+
+	water_refl_camera->SetReflectionPlane(water_refl_plane);
+	water_refl_camera->SetClipPlane(water_clip_plane);
+
+	// The water reflection texture is rectangular. Set reflection camera aspect ratio to match
+	water_refl_camera->SetAspectRatio(float(GetSubsystem<Urho3D::Graphics>()->GetWidth()) / float(GetSubsystem<Urho3D::Graphics>()->GetHeight()));
 }
 
 }

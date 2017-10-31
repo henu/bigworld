@@ -13,9 +13,11 @@ pos(pos),
 yaw(yaw),
 pitch(pitch),
 roll(roll),
-viewdistance_in_chunks(viewdistance_in_chunks)
+viewdistance_in_chunks(viewdistance_in_chunks),
+water_refl_camera_raw(NULL)
 {
 	node = world->getScene()->CreateChild();
+	camera_raw = node->CreateComponent<Urho3D::Camera>();
 }
 
 Urho3D::Quaternion Camera::getRotation() const
@@ -64,6 +66,16 @@ void Camera::setRotation(float yaw, float pitch, float roll)
 	this->pitch = pitch;
 	this->roll = roll;
 	updateNodeTransform();
+}
+
+void Camera::setNearAndFarClip(float near, float far)
+{
+	camera_raw->SetNearClip(near);
+	camera_raw->SetFarClip(far);
+	if (water_refl_camera_raw) {
+		water_refl_camera_raw->SetNearClip(near);
+		water_refl_camera_raw->SetFarClip(far);
+	}
 }
 
 void Camera::updateNodeTransform()
@@ -126,6 +138,16 @@ bool Camera::fixIfOutsideOrigin()
 	}
 
 	return fixed;
+}
+
+Urho3D::Camera* Camera::createWaterReflectionCamera()
+{
+	if (water_refl_camera_raw) {
+		throw std::runtime_error("Reflection camera already created!");
+	}
+	Urho3D::Node* water_refl_camera_node = node->CreateChild();
+	water_refl_camera_raw = water_refl_camera_node->CreateComponent<Urho3D::Camera>();
+	return water_refl_camera_raw;
 }
 
 }

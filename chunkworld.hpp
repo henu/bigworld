@@ -29,6 +29,8 @@ public:
 	// This can be called only once.
 	Camera* setUpCamera(Urho3D::IntVector2 const& chunk_pos, unsigned baseheight, Urho3D::Vector3 const& pos, float yaw = 0, float pitch = 0, float roll = 0, unsigned viewdistance_in_chunks = 8);
 
+	void setUpWaterReflection(unsigned baseheight, float height, Urho3D::Material* water_material, float water_plane_width, unsigned water_viewmask = 0x80000000);
+
 	inline unsigned getChunkWidth() const { return chunk_width; }
 	inline float getChunkWidthFloat() const { return chunk_width * sqr_width; }
 	inline float getSquareWidth() const { return sqr_width; }
@@ -72,6 +74,13 @@ private:
 
 	Urho3D::SharedPtr<Camera> camera;
 
+	// Water reflection
+	bool water_refl;
+	unsigned water_baseheight;
+	float water_height;
+	Urho3D::Node* water_node;
+	Urho3D::Camera* water_refl_camera;
+
 	Chunks chunks;
 
 	// View details
@@ -89,6 +98,8 @@ private:
 	unsigned va_being_built_view_distance_in_chunks;
 
 	void handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantMap& eventData);
+
+	void updateWaterReflection();
 };
 
 }

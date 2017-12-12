@@ -43,6 +43,8 @@ pos(pos)
 
 	node = world->getScene()->CreateChild();
 	node->SetDeepEnabled(false);
+
+	updateLowestHeight();
 }
 
 Chunk::~Chunk()
@@ -226,6 +228,62 @@ void Chunk::copyCornerRow(Corners& result, unsigned x, unsigned y, unsigned size
 	result.Insert(result.End(), corners.Begin() + ofs, corners.Begin() + ofs + size);
 }
 
+void Chunk::getTriangles(
+	Urho3D::Vector3& tri1_pos1,
+	Urho3D::Vector3& tri1_pos2,
+	Urho3D::Vector3& tri1_pos3,
+	Urho3D::Vector3& tri2_pos1,
+	Urho3D::Vector3& tri2_pos2,
+	Urho3D::Vector3& tri2_pos3,
+	unsigned x, unsigned y,
+	Chunk const* ngb_n, Chunk const* ngb_ne, Chunk const* ngb_e
+) const
+{
+	unsigned const CHUNK_WIDTH = world->getChunkWidth();
+	float const SQUARE_WIDTH = world->getSquareWidth();
+	float const HEIGHTSTEP = world->getHeightstep();
+	Urho3D::Vector3 const CHUNK_SIZE_HALF(CHUNK_WIDTH * SQUARE_WIDTH / 2, 0, CHUNK_WIDTH * SQUARE_WIDTH / 2);
+
+	int h_sw = getHeight(x, y, CHUNK_WIDTH, NULL, NULL, NULL);
+	int h_nw = getHeight(x, y + 1, CHUNK_WIDTH, ngb_n, NULL, NULL);
+	int h_ne = getHeight(x + 1, y + 1, CHUNK_WIDTH, ngb_n, ngb_ne, ngb_e);
+	int h_se = getHeight(x + 1, y, CHUNK_WIDTH, NULL, NULL, ngb_e);
+	h_sw -= baseheight;
+	h_nw -= baseheight;
+	h_ne -= baseheight;
+	h_se -= baseheight;
+
+	float h_f_sw = h_sw * HEIGHTSTEP;
+	float h_f_nw = h_nw * HEIGHTSTEP;
+	float h_f_ne = h_ne * HEIGHTSTEP;
+	float h_f_se = h_se * HEIGHTSTEP;
+
+	Urho3D::Vector3 pos_sw(x * SQUARE_WIDTH, h_f_sw, y * SQUARE_WIDTH);
+	Urho3D::Vector3 pos_nw(x * SQUARE_WIDTH, h_f_nw, (y + 1) * SQUARE_WIDTH);
+	Urho3D::Vector3 pos_ne((x + 1) * SQUARE_WIDTH, h_f_ne, (y + 1) * SQUARE_WIDTH);
+	Urho3D::Vector3 pos_se((x + 1) * SQUARE_WIDTH, h_f_se, y * SQUARE_WIDTH);
+	pos_sw -= CHUNK_SIZE_HALF;
+	pos_nw -= CHUNK_SIZE_HALF;
+	pos_ne -= CHUNK_SIZE_HALF;
+	pos_se -= CHUNK_SIZE_HALF;
+
+	if (abs(h_sw - h_ne) < abs(h_se - h_nw)) {
+		tri1_pos1 = pos_sw;
+		tri1_pos2 = pos_ne;
+		tri1_pos3 = pos_se;
+		tri2_pos1 = pos_sw;
+		tri2_pos2 = pos_nw;
+		tri2_pos3 = pos_ne;
+	} else {
+		tri1_pos1 = pos_sw;
+		tri1_pos2 = pos_nw;
+		tri1_pos3 = pos_se;
+		tri2_pos1 = pos_nw;
+		tri2_pos2 = pos_ne;
+		tri2_pos3 = pos_se;
+	}
+}
+
 bool Chunk::storeTaskResultsToLodCache()
 {
 	Urho3D::ResourceCache* resources = GetSubsystem<Urho3D::ResourceCache>();
@@ -350,6 +408,14 @@ bool Chunk::storeTaskResultsToLodCache()
 	}
 
 	return true;
+}
+
+void Chunk::updateLowestHeight()
+{
+	lowest_height = corners[0].height;
+	for (unsigned i = 1; i < corners.Size(); ++ i) {
+		lowest_height = Urho3D::Min(lowest_height, corners[i].height);
+	}
 }
 
 }

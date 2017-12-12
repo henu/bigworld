@@ -51,10 +51,32 @@ public:
 	inline unsigned getBaseHeight() const { return baseheight; }
 
 	inline uint16_t getHeight(unsigned x, unsigned y, unsigned chunk_w) const { return corners[x + y * chunk_w].height; }
+	inline int getHeight(unsigned x, unsigned y, unsigned chunk_w, Chunk const* ngb_n, Chunk const* ngb_ne, Chunk const* ngb_e) const
+	{
+		assert(x <= chunk_w);
+		assert(y <= chunk_w);
+		if (x < chunk_w && y < chunk_w) return corners[x + y * chunk_w].height;
+		if (x < chunk_w) return int(ngb_n->corners[x].height) + int(ngb_n->baseheight) - int(baseheight);
+		if (y < chunk_w) return int(ngb_e->corners[y * chunk_w].height) + int(ngb_e->baseheight) - int(baseheight);
+		return int(ngb_ne->corners[0].height) + int(ngb_ne->baseheight) - int(baseheight);
+	}
 
 	inline Corners const& getCorners() const { return corners; }
 
 	void copyCornerRow(Corners& result, unsigned x, unsigned y, unsigned size);
+
+	void getTriangles(
+		Urho3D::Vector3& tri1_pos1,
+		Urho3D::Vector3& tri1_pos2,
+		Urho3D::Vector3& tri1_pos3,
+		Urho3D::Vector3& tri2_pos1,
+		Urho3D::Vector3& tri2_pos2,
+		Urho3D::Vector3& tri2_pos3,
+		unsigned x, unsigned y,
+		Chunk const* ngb_n, Chunk const* ngb_ne, Chunk const* ngb_e
+	) const;
+
+	inline uint16_t getLowestHeight() const { return lowest_height; }
 
 private:
 
@@ -66,6 +88,8 @@ private:
 	Corners corners;
 
 	unsigned baseheight;
+
+	uint16_t lowest_height;
 
 	// Cache of Models and material. These can be
 	// cleared when data in corners change.
@@ -85,6 +109,8 @@ private:
 
 	// Return true if all task results were used succesfully.
 	bool storeTaskResultsToLodCache();
+
+	void updateLowestHeight();
 };
 
 }

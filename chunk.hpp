@@ -56,9 +56,9 @@ public:
 		assert(x <= chunk_w);
 		assert(y <= chunk_w);
 		if (x < chunk_w && y < chunk_w) return corners[x + y * chunk_w].height;
-		if (x < chunk_w) return int(ngb_n->corners[x].height) + int(ngb_n->baseheight) - int(baseheight);
-		if (y < chunk_w) return int(ngb_e->corners[y * chunk_w].height) + int(ngb_e->baseheight) - int(baseheight);
-		return int(ngb_ne->corners[0].height) + int(ngb_ne->baseheight) - int(baseheight);
+		if (x < chunk_w) return int(ngb_n->corners[x].height);
+		if (y < chunk_w) return int(ngb_e->corners[y * chunk_w].height);
+		return int(ngb_ne->corners[0].height);
 	}
 
 	inline Corners const& getCorners() const { return corners; }

@@ -3,6 +3,8 @@
 
 #include "types.hpp"
 
+#include "../urhoextras/triangle.hpp"
+
 #include <Urho3D/Container/HashMap.h>
 #include <Urho3D/Core/Object.h>
 #include <Urho3D/Graphics/Material.h>
@@ -65,16 +67,9 @@ public:
 
 	void copyCornerRow(Corners& result, unsigned x, unsigned y, unsigned size);
 
-	void getTriangles(
-		Urho3D::Vector3& tri1_pos1,
-		Urho3D::Vector3& tri1_pos2,
-		Urho3D::Vector3& tri1_pos3,
-		Urho3D::Vector3& tri2_pos1,
-		Urho3D::Vector3& tri2_pos2,
-		Urho3D::Vector3& tri2_pos3,
-		unsigned x, unsigned y,
-		Chunk const* ngb_n, Chunk const* ngb_ne, Chunk const* ngb_e
-	) const;
+	void getTriangles(UrhoExtras::Triangle& tri1, UrhoExtras::Triangle& tri2,
+	                  unsigned x, unsigned y,
+	                  Chunk const* ngb_n, Chunk const* ngb_ne, Chunk const* ngb_e) const;
 
 	inline uint16_t getLowestHeight() const { return lowest_height; }
 

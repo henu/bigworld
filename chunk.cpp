@@ -228,16 +228,9 @@ void Chunk::copyCornerRow(Corners& result, unsigned x, unsigned y, unsigned size
 	result.Insert(result.End(), corners.Begin() + ofs, corners.Begin() + ofs + size);
 }
 
-void Chunk::getTriangles(
-	Urho3D::Vector3& tri1_pos1,
-	Urho3D::Vector3& tri1_pos2,
-	Urho3D::Vector3& tri1_pos3,
-	Urho3D::Vector3& tri2_pos1,
-	Urho3D::Vector3& tri2_pos2,
-	Urho3D::Vector3& tri2_pos3,
-	unsigned x, unsigned y,
-	Chunk const* ngb_n, Chunk const* ngb_ne, Chunk const* ngb_e
-) const
+void Chunk::getTriangles(UrhoExtras::Triangle& tri1, UrhoExtras::Triangle& tri2,
+                         unsigned x, unsigned y,
+                         Chunk const* ngb_n, Chunk const* ngb_ne, Chunk const* ngb_e) const
 {
 	unsigned const CHUNK_WIDTH = world->getChunkWidth();
 	float const SQUARE_WIDTH = world->getSquareWidth();
@@ -268,19 +261,19 @@ void Chunk::getTriangles(
 	pos_se -= CHUNK_SIZE_HALF;
 
 	if (abs(h_sw - h_ne) < abs(h_se - h_nw)) {
-		tri1_pos1 = pos_sw;
-		tri1_pos2 = pos_ne;
-		tri1_pos3 = pos_se;
-		tri2_pos1 = pos_sw;
-		tri2_pos2 = pos_nw;
-		tri2_pos3 = pos_ne;
+		tri1.p1 = pos_sw;
+		tri1.p2 = pos_ne;
+		tri1.p3 = pos_se;
+		tri2.p1 = pos_sw;
+		tri2.p2 = pos_nw;
+		tri2.p3 = pos_ne;
 	} else {
-		tri1_pos1 = pos_sw;
-		tri1_pos2 = pos_nw;
-		tri1_pos3 = pos_se;
-		tri2_pos1 = pos_nw;
-		tri2_pos2 = pos_ne;
-		tri2_pos3 = pos_se;
+		tri1.p1 = pos_sw;
+		tri1.p2 = pos_nw;
+		tri1.p3 = pos_se;
+		tri2.p1 = pos_nw;
+		tri2.p2 = pos_ne;
+		tri2.p3 = pos_se;
 	}
 }
 

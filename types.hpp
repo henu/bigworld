@@ -222,6 +222,15 @@ public:
 		return result;
 	}
 
+	inline unsigned getTotalWeight() const
+	{
+		unsigned total_weight = 0;
+		for (unsigned i = 1; i < buf_size; i += 2) {
+			total_weight += buf[i];
+		}
+		return total_weight;
+	}
+
 private:
 
 	uint8_t* buf;

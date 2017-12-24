@@ -46,6 +46,9 @@ public:
 
 	float getHeightFloat(Urho3D::IntVector2 const& chunk_pos, Urho3D::Vector2 const& pos, unsigned baseheight) const;
 
+	float getHeightFromCorners(float h_sw, float h_nw, float h_ne, float h_se, Urho3D::Vector2 const& sqr_pos) const;
+	Urho3D::Vector3 getNormalFromCorners(float h_sw, float h_nw, float h_ne, float h_se, Urho3D::Vector2 const& sqr_pos) const;
+
 	inline Urho3D::IntVector2 getOrigin() const { return origin; }
 	inline unsigned getOriginHeight() const { return origin_height; }
 

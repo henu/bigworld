@@ -166,9 +166,73 @@ float ChunkWorld::getHeightFloat(Urho3D::IntVector2 const& chunk_pos, Urho3D::Ve
 	float h_ne_f = h_ne * heightstep;
 	float h_nw_f = h_nw * heightstep;
 
-// TODO: In future, consider how square is really divided into two triangles
-return Urho3D::Lerp(Urho3D::Lerp(h_sw_f, h_nw_f, pos_f_y), Urho3D::Lerp(h_se_f, h_ne_f, pos_f_y), pos_f_x);
+	return getHeightFromCorners(h_sw_f, h_se_f, h_ne_f, h_nw_f, Urho3D::Vector2(pos_f_x, pos_f_y));
 }
+
+float ChunkWorld::getHeightFromCorners(float h_sw, float h_nw, float h_ne, float h_se, Urho3D::Vector2 const& sqr_pos) const
+{
+	// Use diagonal that has smaller height difference
+	if (fabs(h_sw - h_ne) < fabs(h_se - h_nw)) {
+		// If SE triangle
+		if (sqr_pos.x_ > sqr_pos.y_) {
+			return Urho3D::Lerp(Urho3D::Lerp(h_sw, h_se, sqr_pos.x_), h_ne, sqr_pos.y_);
+		}
+		// If NW triangle
+		else {
+			return Urho3D::Lerp(h_sw, Urho3D::Lerp(h_nw, h_ne, sqr_pos.x_), sqr_pos.y_);
+		}
+	} else {
+		// If SW triangle
+		if (sqr_pos.x_ + sqr_pos.y_ < 1) {
+			return Urho3D::Lerp(Urho3D::Lerp(h_sw, h_se, sqr_pos.x_), h_nw, sqr_pos.y_);
+		}
+		// If NE triangle
+		else {
+			return Urho3D::Lerp(h_se, Urho3D::Lerp(h_nw, h_ne, sqr_pos.x_), sqr_pos.y_);
+		}
+	}
+}
+
+Urho3D::Vector3 ChunkWorld::getNormalFromCorners(float h_sw, float h_nw, float h_ne, float h_se, Urho3D::Vector2 const& sqr_pos) const
+{
+	// Use diagonal that has smaller height difference
+	if (fabs(h_sw - h_ne) < fabs(h_se - h_nw)) {
+		// If SE triangle
+		if (sqr_pos.x_ > sqr_pos.y_) {
+			Urho3D::Vector3 a = Urho3D::Vector3(sqr_width, h_ne - h_sw, sqr_width);
+			Urho3D::Vector3 b = Urho3D::Vector3(sqr_width, h_se - h_sw, 0);
+			Urho3D::Vector3 normal = a.CrossProduct(b).Normalized();
+			assert(normal.y_ > 0);
+			return normal;
+		}
+		// If NW triangle
+		else {
+			Urho3D::Vector3 a = Urho3D::Vector3(0, h_nw - h_sw, sqr_width);
+			Urho3D::Vector3 b = Urho3D::Vector3(sqr_width, h_ne - h_sw, sqr_width);
+			Urho3D::Vector3 normal = a.CrossProduct(b).Normalized();
+			assert(normal.y_ > 0);
+			return normal;
+		}
+	} else {
+		// If SW triangle
+		if (sqr_pos.x_ + sqr_pos.y_ < 1) {
+			Urho3D::Vector3 a = Urho3D::Vector3(sqr_width, h_se - h_nw, -sqr_width);
+			Urho3D::Vector3 b = Urho3D::Vector3(0, h_sw - h_nw, -sqr_width);
+			Urho3D::Vector3 normal = a.CrossProduct(b).Normalized();
+			assert(normal.y_ > 0);
+			return normal;
+		}
+		// If NE triangle
+		else {
+			Urho3D::Vector3 a = Urho3D::Vector3(sqr_width, h_ne - h_nw, 0);
+			Urho3D::Vector3 b = Urho3D::Vector3(sqr_width, h_se - h_nw, -sqr_width);
+			Urho3D::Vector3 normal = a.CrossProduct(b).Normalized();
+			assert(normal.y_ > 0);
+			return normal;
+		}
+	}
+}
+
 
 void ChunkWorld::addChunk(Urho3D::IntVector2 const& chunk_pos, Chunk* chunk)
 {

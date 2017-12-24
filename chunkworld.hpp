@@ -14,6 +14,10 @@
 namespace BigWorld
 {
 
+URHO3D_EVENT(E_VIEWAREA_ORIGIN_CHANGED, ViewareaOriginChanged)
+{
+}
+
 class ChunkWorld : public Urho3D::Object
 {
 	URHO3D_OBJECT(ChunkWorld, Urho3D::Object)

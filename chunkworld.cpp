@@ -369,11 +369,16 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 
 			// Mark process complete
 			va = va_being_built;
+			bool origin_changed = origin != va_being_built_origin;
 			origin = va_being_built_origin;
 			origin_height = va_being_built_origin_height;
 			va_being_built.Clear();
 
 			camera->updateNodeTransform();
+
+			if (origin_changed) {
+				SendEvent(E_VIEWAREA_ORIGIN_CHANGED);
+			}
 		}
 	}
 
@@ -435,7 +440,6 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 		}
 
 		viewarea_recalculation_required = false;
-
 	}
 }
 

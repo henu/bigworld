@@ -11,6 +11,7 @@
 #include <Urho3D/Resource/Image.h>
 
 #include <cstdint>
+#include <map>
 
 namespace BigWorld
 {
@@ -111,6 +112,11 @@ public:
 	inline void set(uint8_t key, float val)
 	{
 		uint8_t byte_val = Urho3D::Clamp<int>(val * 255.0 + 0.5, 0, 255);
+		set(key, byte_val);
+	}
+
+	inline void setByte(uint8_t key, uint8_t byte_val)
+	{
 		for (unsigned i = 0; i < buf_size; i += 2) {
 			if (buf[i] == key) {
 				// Default case
@@ -180,6 +186,40 @@ public:
 	inline uint8_t getValueByte(uint8_t idx) const
 	{
 		return buf[idx * 2 + 1];
+	}
+
+	inline TTypesByWeight averageOfTwo(TTypesByWeight const& other) const
+	{
+		// For better precision, store both first to map
+		std::map<uint8_t, uint16_t> temp;
+		for (unsigned i = 0; i < size(); ++ i) {
+			uint8_t v = getValueByte(i);
+			if (v > 0) {
+				uint8_t k = getKey(i);
+				temp[k] = v;
+			}
+		}
+		for (unsigned i = 0; i < other.size(); ++ i) {
+			uint8_t v = other.getValueByte(i);
+			if (v > 0) {
+				uint8_t k = other.getKey(i);
+				std::map<uint8_t, uint16_t>::iterator temp_find = temp.find(k);
+				if (temp_find != temp.end()) {
+					temp_find->second += v;
+				} else {
+					temp[k] = v;
+				}
+			}
+		}
+		// Construct result
+		TTypesByWeight result;
+		for (std::map<uint8_t, uint16_t>::iterator i = temp.begin(); i != temp.end(); ++ i) {
+			uint8_t v = i->second / 2;
+			if (v > 0) {
+				result.setByte(i->first, v);
+			}
+		}
+		return result;
 	}
 
 private:

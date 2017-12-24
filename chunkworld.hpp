@@ -49,7 +49,11 @@ public:
 	void removeChunk(Urho3D::IntVector2 const& chunk_pos);
 	Chunk* getChunk(Urho3D::IntVector2 const& chunk_pos);
 
-	void extractCornersData(Corners& result, Urho3D::IntVector2 const& pos);
+	// Returns height and terrain data from a specific chunk and a little bit from its
+	// neighbors, so it is possible to know calculate normals and know terraintypes
+	// for every corner of every square in the chunk. "result" must be empty. If there
+	// is not enough Chunks loaded, then "result" is not touched.
+	void extractCornersData(Corners& result, Urho3D::IntVector2 const& pos) const;
 
 	// This is used by Chunks. Returns NULL if Material is not yet ready.
 	Urho3D::Material* getSingleLayerTerrainMaterial(uint8_t ttype);

@@ -218,7 +218,7 @@ void Chunk::moveChildNodeFrom(Urho3D::Node* child)
 	child->SetEnabled(node->IsEnabled());
 }
 
-void Chunk::copyCornerRow(Corners& result, unsigned x, unsigned y, unsigned size)
+void Chunk::copyCornerRow(Corners& result, unsigned x, unsigned y, unsigned size) const
 {
 	unsigned chunk_w = world->getChunkWidth();
 	assert(size <= chunk_w - x);

@@ -208,24 +208,41 @@ Chunk* ChunkWorld::getChunk(Urho3D::IntVector2 const& chunk_pos)
 	return NULL;
 }
 
-void ChunkWorld::extractCornersData(Corners& result, Urho3D::IntVector2 const& pos)
+void ChunkWorld::extractCornersData(Corners& result, Urho3D::IntVector2 const& pos) const
 {
+	assert(result.Empty());
+
 	// Get required chunks
-	Chunk* chk = chunks[pos];
-	Chunk* chk_s = chunks[pos + Urho3D::IntVector2(0, -1)];
-	Chunk* chk_se = chunks[pos + Urho3D::IntVector2(1, -1)];
-	Chunk* chk_e = chunks[pos + Urho3D::IntVector2(1, 0)];
-	Chunk* chk_ne = chunks[pos + Urho3D::IntVector2(1, 1)];
-	Chunk* chk_n = chunks[pos + Urho3D::IntVector2(0, 1)];
-	Chunk* chk_nw = chunks[pos + Urho3D::IntVector2(-1, 1)];
-	Chunk* chk_w = chunks[pos + Urho3D::IntVector2(-1, 0)];
+	Chunks::ConstIterator chk_find = chunks.Find(pos);
+	if (chk_find == chunks.End()) return;
+	Chunks::ConstIterator chk_s_find = chunks.Find(pos + Urho3D::IntVector2(0, -1));
+	if (chk_s_find == chunks.End()) return;
+	Chunks::ConstIterator chk_se_find = chunks.Find(pos + Urho3D::IntVector2(1, -1));
+	if (chk_se_find == chunks.End()) return;
+	Chunks::ConstIterator chk_e_find = chunks.Find(pos + Urho3D::IntVector2(1, 0));
+	if (chk_e_find == chunks.End()) return;
+	Chunks::ConstIterator chk_ne_find = chunks.Find(pos + Urho3D::IntVector2(1, 1));
+	if (chk_ne_find == chunks.End()) return;
+	Chunks::ConstIterator chk_n_find = chunks.Find(pos + Urho3D::IntVector2(0, 1));
+	if (chk_n_find == chunks.End()) return;
+	Chunks::ConstIterator chk_nw_find = chunks.Find(pos + Urho3D::IntVector2(-1, 1));
+	if (chk_nw_find == chunks.End()) return;
+	Chunks::ConstIterator chk_w_find = chunks.Find(pos + Urho3D::IntVector2(-1, 0));
+	if (chk_w_find == chunks.End()) return;
+	Chunk const* chk = chk_find->second_;
+	Chunk const* chk_s = chk_s_find->second_;
+	Chunk const* chk_se = chk_se_find->second_;
+	Chunk const* chk_e = chk_e_find->second_;
+	Chunk const* chk_ne = chk_ne_find->second_;
+	Chunk const* chk_n = chk_n_find->second_;
+	Chunk const* chk_nw = chk_nw_find->second_;
+	Chunk const* chk_w = chk_w_find->second_;
 
 	// One extra for position data, and two more
 	// to calculate neighbor positions for normal.
 	unsigned result_w = chunk_width + 3;
 
 	// Prepare result
-	assert(result.Empty());
 	result.Reserve(result_w * result_w);
 
 	// South edge

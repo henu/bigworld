@@ -65,7 +65,7 @@ public:
 
 	inline Corners const& getCorners() const { return corners; }
 
-	void copyCornerRow(Corners& result, unsigned x, unsigned y, unsigned size);
+	void copyCornerRow(Corners& result, unsigned x, unsigned y, unsigned size) const;
 
 	void getTriangles(UrhoExtras::Triangle& tri1, UrhoExtras::Triangle& tri2,
 	                  unsigned x, unsigned y,

@@ -112,7 +112,7 @@ public:
 	inline void set(uint8_t key, float val)
 	{
 		uint8_t byte_val = Urho3D::Clamp<int>(val * 255.0 + 0.5, 0, 255);
-		set(key, byte_val);
+		setByte(key, byte_val);
 	}
 
 	inline void setByte(uint8_t key, uint8_t byte_val)

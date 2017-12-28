@@ -14,12 +14,23 @@
 namespace BigWorld
 {
 
-ChunkWorld::ChunkWorld(Urho3D::Context* context, unsigned chunk_width, float sqr_width, float heightstep, unsigned terrain_texture_repeats, bool headless) :
+ChunkWorld::ChunkWorld(
+	Urho3D::Context* context,
+	unsigned chunk_width,
+	float sqr_width,
+	float heightstep,
+	unsigned terrain_texture_repeats,
+	unsigned undergrowth_radius_chunks,
+	float undergrowth_draw_distance,
+	bool headless
+) :
 Urho3D::Object(context),
 chunk_width(chunk_width),
 sqr_width(sqr_width),
 heightstep(heightstep),
 terrain_texture_repeats(terrain_texture_repeats),
+undergrowth_radius_chunks(undergrowth_radius_chunks),
+undergrowth_draw_distance(undergrowth_draw_distance),
 headless(headless),
 water_refl(false),
 water_baseheight(0),
@@ -40,6 +51,15 @@ viewarea_recalculation_required(false)
 void ChunkWorld::addTerrainTexture(Urho3D::String const& name)
 {
 	texs_names.Push(name);
+}
+
+void ChunkWorld::addUndergrowthModel(unsigned terraintype, Urho3D::String const& model, Urho3D::String const& material, bool follow_ground_angle)
+{
+	UndergrowthModel ug;
+	ug.model = model;
+	ug.material = material;
+	ug.follow_ground_angle = follow_ground_angle;
+	ugmodels[terraintype].Push(ug);
 }
 
 Camera* ChunkWorld::setUpCamera(Urho3D::IntVector2 const& chunk_pos, unsigned baseheight, Urho3D::Vector3 const& pos, float yaw, float pitch, float roll, unsigned viewdistance_in_chunks)
@@ -443,6 +463,10 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 			if (origin_changed) {
 				SendEvent(E_VIEWAREA_ORIGIN_CHANGED);
 			}
+
+			if (!headless) {
+				startCreatingUndergrowth();
+			}
 		}
 	}
 
@@ -459,6 +483,8 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 	if (camera->fixIfOutsideOrigin()) {
 		viewarea_recalculation_required = true;
 	}
+
+	updateUndergrowth();
 
 	if (!viewarea_recalculation_required) {
 		return;
@@ -524,6 +550,98 @@ void ChunkWorld::updateWaterReflection()
 
 	// The water reflection texture is rectangular. Set reflection camera aspect ratio to match
 	water_refl_camera->SetAspectRatio(float(GetSubsystem<Urho3D::Graphics>()->GetWidth()) / float(GetSubsystem<Urho3D::Graphics>()->GetHeight()));
+}
+
+void ChunkWorld::startCreatingUndergrowth()
+{
+	{
+		URHO3D_PROFILE(StartCreatingUndergrowth);
+		// Ask nearby Chunks to set up undergrowth
+		Urho3D::IntVector2 i;
+		for (i.y_ = -undergrowth_radius_chunks; i.y_ <= int(undergrowth_radius_chunks); ++ i.y_) {
+			for (i.x_ = -undergrowth_radius_chunks; i.x_ <= int(undergrowth_radius_chunks); ++ i.x_) {
+				if (i.Length() <= undergrowth_radius_chunks) {
+					Urho3D::IntVector2 chunk_pos = origin + i;
+					Chunk* chunk = getChunk(chunk_pos);
+					// Try to create undergrowth. If Chunk is not yet loaded,
+					// or creating fails, then add position to waiting queue.
+					if (!chunk) {
+						chunks_missing_undergrowth.Insert(chunk_pos);
+					} else {
+						if (!chunk->createUndergrowth()) {
+							chunks_missing_undergrowth.Insert(chunk_pos);
+						}
+						chunks_having_undergrowth.Insert(chunk_pos);
+					}
+				}
+			}
+		}
+	}
+
+	{
+		URHO3D_PROFILE(CleanIncompleteUndergrowth);
+		// Go missing undergrowth chunks through and remove those that are too far away
+		for (IntVector2Set::Iterator i = chunks_missing_undergrowth.Begin(); i != chunks_missing_undergrowth.End(); ) {
+			Urho3D::IntVector2 chunk_pos_rel = *i - origin;
+			if (chunk_pos_rel.Length() > undergrowth_radius_chunks) {
+				Chunk* chunk = getChunk(*i);
+				if (chunk) {
+					if (chunk->destroyUndergrowth()) {
+						chunks_having_undergrowth.Erase(*i);
+						i = chunks_missing_undergrowth.Erase(i);
+					} else {
+						++ i;
+					}
+				} else {
+					++ i;
+				}
+			} else {
+				++ i;
+			}
+		}
+	}
+
+	{
+		URHO3D_PROFILE(CleanTooFarAwayUndergrowth);
+		// Go through chunks that might have undergrowth and remove those that are too far away
+		for (IntVector2Set::Iterator i = chunks_having_undergrowth.Begin(); i != chunks_having_undergrowth.End(); ) {
+			Urho3D::IntVector2 const& chunk_pos = *i;
+			if ((chunk_pos - origin).Length() > undergrowth_radius_chunks + 1) {
+				// This chunk is too far away
+				Chunk* chunk = getChunk(chunk_pos);
+				// Check if chunk isn't even loaded
+				if (!chunk) {
+					i = chunks_having_undergrowth.Erase(i);
+				}
+				// Check if destroying is possible
+				else if (chunk->destroyUndergrowth()) {
+					i = chunks_having_undergrowth.Erase(i);
+				}
+				// Destroying was not possible, so skip this for now
+				else {
+					++ i;
+				}
+			} else {
+				++ i;
+			}
+		}
+	}
+
+// TODO: Update undergrowth when ground height changes!
+}
+
+void ChunkWorld::updateUndergrowth()
+{
+	// Go through Chunks that are missing
+	// undergrowth and try to create them.
+	for (IntVector2Set::Iterator i = chunks_missing_undergrowth.Begin(); i != chunks_missing_undergrowth.End(); ) {
+		Chunk* chunk = getChunk(*i);
+		if (chunk && chunk->createUndergrowth()) {
+			i = chunks_missing_undergrowth.Erase(i);
+		} else {
+			++ i;
+		}
+	}
 }
 
 }

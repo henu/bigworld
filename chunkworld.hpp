@@ -24,9 +24,20 @@ class ChunkWorld : public Urho3D::Object
 
 public:
 
-	ChunkWorld(Urho3D::Context* context, unsigned chunk_width, float sqr_width, float heightstep, unsigned terrain_texture_repeats, bool headless);
+	ChunkWorld(
+		Urho3D::Context* context,
+		unsigned chunk_width,
+		float sqr_width,
+		float heightstep,
+		unsigned terrain_texture_repeats,
+		unsigned undergrowth_radius_chunks,
+		float undergrowth_draw_distance, bool headless
+	);
 
 	void addTerrainTexture(Urho3D::String const& name);
+
+	void addUndergrowthModel(unsigned terraintype, Urho3D::String const& model, Urho3D::String const& material, bool follow_ground_angle);
+	inline UndergrowthModelsByTerraintype getUndergrowthModelsByTerraintype() const { return ugmodels; }
 
 	inline Urho3D::Scene* getScene() const { return scene; }
 
@@ -40,6 +51,7 @@ public:
 	inline float getSquareWidth() const { return sqr_width; }
 	inline float getHeightstep() const { return heightstep; }
 	inline unsigned getTerrainTextureRepeats() const { return terrain_texture_repeats; }
+	inline float getUndergrowthDrawDistance() const { return undergrowth_draw_distance; }
 	inline Urho3D::String getTerrainTextureName(uint8_t ttype) const { return texs_names[ttype]; }
 
 	inline bool isHeadless() const { return headless; }
@@ -69,6 +81,7 @@ private:
 
 	typedef Urho3D::HashMap<uint8_t, Urho3D::SharedPtr<Urho3D::Material> > SingleLayerMaterialsCache;
 	typedef Urho3D::HashMap<Urho3D::IntVector2, Urho3D::SharedPtr<Chunk> > Chunks;
+	typedef Urho3D::HashSet<Urho3D::IntVector2> IntVector2Set;
 
 	Urho3D::SharedPtr<Urho3D::Scene> scene;
 
@@ -77,7 +90,10 @@ private:
 	float const sqr_width;
 	float const heightstep;
 	unsigned const terrain_texture_repeats;
+	unsigned const undergrowth_radius_chunks; // TODO: Maybe calculate this from the undergrowth draw distance?
+	float const undergrowth_draw_distance;
 	Urho3D::Vector<Urho3D::String> texs_names;
+	UndergrowthModelsByTerraintype ugmodels;
 
 	bool headless;
 
@@ -93,6 +109,11 @@ private:
 	Urho3D::Camera* water_refl_camera;
 
 	Chunks chunks;
+
+	// Chunks that are waiting for undergrowth to
+	// load and Chunks that have undergrowth in them
+	IntVector2Set chunks_missing_undergrowth;
+	IntVector2Set chunks_having_undergrowth;
 
 	// View details
 	ViewArea va;
@@ -111,6 +132,9 @@ private:
 	void handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantMap& eventData);
 
 	void updateWaterReflection();
+
+	void startCreatingUndergrowth();
+	void updateUndergrowth();
 };
 
 }

@@ -2,6 +2,8 @@
 
 #include "chunkworld.hpp"
 #include "lodbuilder.hpp"
+#include "../urhoextras/random.hpp"
+#include "../urhoextras/utils.hpp"
 
 #include <Urho3D/Core/Profiler.h>
 #include <Urho3D/Graphics/Geometry.h>
@@ -21,7 +23,9 @@ namespace BigWorld
 Chunk::Chunk(ChunkWorld* world, Urho3D::IntVector2 const& pos, Corners& corners) :
 Urho3D::Object(world->GetContext()),
 world(world),
-pos(pos)
+pos(pos),
+undergrowth_state(UGSTATE_NOT_INITIALIZED),
+undergrowth_node(NULL)
 {
 	if (corners.Size() != world->getChunkWidth() * world->getChunkWidth()) {
 		throw std::runtime_error("Array of corners has invalid size!");
@@ -49,6 +53,8 @@ pos(pos)
 
 Chunk::~Chunk()
 {
+	destroyUndergrowth();
+
 	// If there is a preparation task, make sure it is completed.
 	if (task_workitem.NotNull()) {
 		// Action is required only if task is not yet ready
@@ -277,6 +283,120 @@ void Chunk::getTriangles(UrhoExtras::Triangle& tri1, UrhoExtras::Triangle& tri2,
 	}
 }
 
+bool Chunk::createUndergrowth()
+{
+	URHO3D_PROFILE(ChunkCreateUndergrowth);
+
+	if (undergrowth_state == UGSTATE_READY) {
+		return true;
+	}
+
+	if (undergrowth_state == UGSTATE_NOT_INITIALIZED) {
+		world->extractCornersData(undergrowth_corners, pos);
+		if (undergrowth_corners.Empty()) {
+			return false;
+		}
+		undergrowth_state = UGSTATE_PLACING;
+		undergrowth_placer_wi = new Urho3D::WorkItem();
+		undergrowth_placer_wi->aux_ = this;
+		undergrowth_placer_wi->workFunction_ = undergrowthPlacer;
+		Urho3D::WorkQueue* workqueue = GetSubsystem<Urho3D::WorkQueue>();
+		workqueue->AddWorkItem(undergrowth_placer_wi);
+		return false;
+	}
+
+	if (undergrowth_state == UGSTATE_PLACING) {
+	    if (!undergrowth_placer_wi->completed_) {
+			return false;
+		}
+		undergrowth_placer_wi = NULL;
+		undergrowth_state = UGSTATE_LOADING_RESOURCES;
+	}
+
+	if (undergrowth_state == UGSTATE_LOADING_RESOURCES) {
+		// Check if all models and materials are ready
+		bool resources_missing = false;
+		Urho3D::ResourceCache* resources = GetSubsystem<Urho3D::ResourceCache>();
+		for (StrNStr model_and_mat : undergrowth_places.Keys()) {
+			// Check model
+			Urho3D::String const& model_path = model_and_mat.first_;
+			if (!resources->GetExistingResource<Urho3D::Model>(model_path)) {
+				resources->BackgroundLoadResource<Urho3D::Model>(model_path);
+				resources_missing = true;
+			}
+			// Check material
+			Urho3D::String const& mat_path = model_and_mat.second_;
+			if (!resources->GetExistingResource<Urho3D::Material>(mat_path)) {
+				resources->BackgroundLoadResource<Urho3D::Material>(mat_path);
+				resources_missing = true;
+			}
+		}
+		if (resources_missing) {
+			return false;
+		}
+
+		// Resources are ready and models, positions and rotations are decided.
+		// Start combining one Model from them.
+		undergrowth_state = UGSTATE_COMBINING;
+		undergrowth_node = createChildNode();
+		undergrowth_combiner = new UrhoExtras::ModelCombiner(context_);
+		for (UndergrowthPlacements::ConstIterator i = undergrowth_places.Begin(); i != undergrowth_places.End(); ++ i) {
+			Urho3D::Model* model = resources->GetResource<Urho3D::Model>(i->first_.first_);
+			Urho3D::Material* mat = resources->GetResource<Urho3D::Material>(i->first_.second_);
+			for (PosNRot const& pos_n_rot : i->second_) {
+				undergrowth_combiner->AddModel(model, mat, pos_n_rot.pos, pos_n_rot.rot);
+			}
+		}
+
+		return false;
+	}
+
+	if (undergrowth_state == UGSTATE_COMBINING) {
+		if (undergrowth_combiner->Ready()) {
+			Urho3D::Model* model = undergrowth_combiner->GetModel();
+			if (model) {
+				Urho3D::StaticModel* smodel = undergrowth_node->CreateComponent<Urho3D::StaticModel>();
+				smodel->SetModel(model);
+				for (unsigned geom_i = 0; geom_i < undergrowth_combiner->GetModel()->GetNumGeometries(); ++ geom_i) {
+					smodel->SetMaterial(geom_i, undergrowth_combiner->GetMaterial(geom_i));
+				}
+				smodel->SetCastShadows(false);
+				smodel->SetDrawDistance(world->getUndergrowthDrawDistance());
+			}
+			undergrowth_combiner = NULL;
+			undergrowth_places.Clear();
+			undergrowth_state = UGSTATE_READY;
+			return true;
+		}
+		return false;
+	}
+
+	return false;
+}
+
+bool Chunk::destroyUndergrowth()
+{
+	URHO3D_PROFILE(ChunkDestroyUndergrowth);
+	undergrowth_state = UGSTATE_STOP_PLACING;
+	if (undergrowth_placer_wi.NotNull()) {
+		Urho3D::WorkQueue* workqueue = GetSubsystem<Urho3D::WorkQueue>();
+		if (!workqueue->RemoveWorkItem(undergrowth_placer_wi)) {
+			while (!undergrowth_placer_wi->completed_) {
+			}
+		}
+		undergrowth_placer_wi = NULL;
+	}
+	undergrowth_corners.Clear();
+	undergrowth_combiner = NULL;
+	undergrowth_places.Clear();
+	if (undergrowth_node) {
+		undergrowth_node->Remove();
+		undergrowth_node = NULL;
+	}
+	undergrowth_state = UGSTATE_NOT_INITIALIZED;
+	return true;
+}
+
 bool Chunk::storeTaskResultsToLodCache()
 {
 	Urho3D::ResourceCache* resources = GetSubsystem<Urho3D::ResourceCache>();
@@ -409,6 +529,99 @@ void Chunk::updateLowestHeight()
 	for (unsigned i = 1; i < corners.Size(); ++ i) {
 		lowest_height = Urho3D::Min(lowest_height, corners[i].height);
 	}
+}
+
+void Chunk::undergrowthPlacer(Urho3D::WorkItem const* wi, unsigned thread_i)
+{
+	(void)thread_i;
+
+	Chunk* chunk = (Chunk*)wi->aux_;
+	UndergrowthModelsByTerraintype ugmodels = chunk->world->getUndergrowthModelsByTerraintype();
+
+	unsigned const CHUNK_WIDTH = chunk->world->getChunkWidth();
+	float const HEIGHTSTEP = chunk->world->getHeightstep();
+	float const SQUARE_WIDTH = chunk->world->getSquareWidth();
+	float const CHUNK_WIDTH_F_HALF = CHUNK_WIDTH * SQUARE_WIDTH / 2.0;
+
+	for (unsigned y = 0; y < CHUNK_WIDTH; ++ y) {
+		unsigned ofs_sw = (y + 1) * (CHUNK_WIDTH + 3) + 1;
+		for (unsigned x = 0; x < CHUNK_WIDTH; ++ x) {
+			unsigned ofs_nw = ofs_sw + CHUNK_WIDTH + 3;
+			unsigned ofs_ne = ofs_nw + 1;
+			unsigned ofs_se = ofs_sw + 1;
+
+			// If cancel has been requested
+			if (chunk->undergrowth_state == UGSTATE_STOP_PLACING) {
+				chunk->undergrowth_places.Clear();
+				return;
+			}
+
+			// To generate similar results every time, use deterministic random
+// TODO: This does not work! Try something else!
+/*
+			UrhoExtras::Random rnd(ofs_sw);
+			rnd.seedMore(chunk->chunk->getPosition().x_);
+			rnd.seedMore(chunk->chunk->getPosition().y_);
+*/
+UrhoExtras::Random rnd(rand());
+
+			// Randomize rotation and position on square
+			float yaw_angle = 360 * rnd.randomFloat();
+			Urho3D::Vector2 sqr_pos(rnd.randomFloat(), rnd.randomFloat());
+
+			// Get average terraintypes in this square
+			BigWorld::TTypesByWeight const& ttypes_sw = chunk->undergrowth_corners[ofs_sw].ttypes;
+			BigWorld::TTypesByWeight const& ttypes_nw = chunk->undergrowth_corners[ofs_nw].ttypes;
+			BigWorld::TTypesByWeight const& ttypes_ne = chunk->undergrowth_corners[ofs_ne].ttypes;
+			BigWorld::TTypesByWeight const& ttypes_se = chunk->undergrowth_corners[ofs_se].ttypes;
+			BigWorld::TTypesByWeight ttypes = ttypes_sw.averageOfTwo(ttypes_se).averageOfTwo(ttypes_nw.averageOfTwo(ttypes_ne));
+
+			// Select one of the terrain types randomly
+			unsigned ttypes_total_weight = ttypes.getTotalWeight();
+			unsigned ttype_selection_weight = rnd.randomUnsigned() % ttypes_total_weight;
+			unsigned ttype_selection_idx = 0;
+			while (ttype_selection_weight >= ttypes.getValueByte(ttype_selection_idx)) {
+				ttype_selection_weight -= ttypes.getValueByte(ttype_selection_idx);
+				++ ttype_selection_idx;
+				assert(ttype_selection_idx < ttypes.size());
+			}
+			uint8_t ttype_selection = ttypes.getKey(ttype_selection_idx);
+
+			// Select one of the undergrowth models, based on terraintypes
+			UndergrowthModelsByTerraintype::ConstIterator ugs_find = ugmodels.Find(ttype_selection);
+			if (ugs_find != ugmodels.End()) {
+
+				UndergrowthModels const& ttype_ugs = ugs_find->second_;
+				UndergrowthModel const& ttype_ug = ttype_ugs[rnd.randomUnsigned() % ttype_ugs.Size()];
+
+				// Decide position and rotation
+				float c_sw = (int(chunk->undergrowth_corners[ofs_sw].height) - int(chunk->baseheight)) * HEIGHTSTEP;
+				float c_nw = (int(chunk->undergrowth_corners[ofs_nw].height) - int(chunk->baseheight)) * HEIGHTSTEP;
+				float c_ne = (int(chunk->undergrowth_corners[ofs_ne].height) - int(chunk->baseheight)) * HEIGHTSTEP;
+				float c_se = (int(chunk->undergrowth_corners[ofs_se].height) - int(chunk->baseheight)) * HEIGHTSTEP;
+
+				float height = chunk->world->getHeightFromCorners(c_sw, c_nw, c_ne, c_se, sqr_pos);
+
+				PosNRot pos_n_rot;
+				pos_n_rot.pos = Urho3D::Vector3(
+					(x + sqr_pos.x_) * SQUARE_WIDTH - CHUNK_WIDTH_F_HALF,
+					height,
+					(y + sqr_pos.y_) * SQUARE_WIDTH - CHUNK_WIDTH_F_HALF
+				);
+				pos_n_rot.rot = Urho3D::Quaternion(yaw_angle, Urho3D::Vector3::UP);
+				if (ttype_ug.follow_ground_angle) {
+					Urho3D::Vector3 normal = chunk->world->getNormalFromCorners(c_sw, c_nw, c_ne, c_se, sqr_pos);
+					Urho3D::Vector2 normal_xz(normal.x_, normal.z_);
+					float follow_yaw = UrhoExtras::getAngle(normal_xz);
+					float follow_pitch = UrhoExtras::getAngle(normal_xz.Length(), normal.y_);
+					pos_n_rot.rot = Urho3D::Quaternion(follow_yaw, Urho3D::Vector3::UP) * Urho3D::Quaternion(follow_pitch, Urho3D::Vector3::RIGHT) * pos_n_rot.rot;
+				}
+				chunk->undergrowth_places[StrNStr(ttype_ug.model, ttype_ug.material)].Push(pos_n_rot);
+			}
+			++ ofs_sw;
+		}
+	}
+
 }
 
 }

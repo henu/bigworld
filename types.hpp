@@ -2,6 +2,7 @@
 #define BIGWORLD_TYPES_HPP
 
 #include <Urho3D/Container/HashMap.h>
+#include <Urho3D/Container/Str.h>
 #include <Urho3D/Container/Vector.h>
 #include <Urho3D/Graphics/VertexBuffer.h>
 #include <Urho3D/IO/Deserializer.h>
@@ -289,6 +290,26 @@ struct LodBuildingTaskData : public Urho3D::RefCounted
 	TTypes used_ttypes;
 	Urho3D::SharedPtr<Urho3D::Image> ttype_image;
 };
+
+typedef Urho3D::Pair<Urho3D::String, Urho3D::String> StrNStr;
+
+struct PosNRot
+{
+	Urho3D::Vector3 pos;
+	Urho3D::Quaternion rot;
+};
+typedef Urho3D::PODVector<PosNRot> PosNRots;
+
+// Undergrowth stuff
+struct UndergrowthModel
+{
+	Urho3D::String model;
+	Urho3D::String material;
+	bool follow_ground_angle;
+};
+typedef Urho3D::Vector<UndergrowthModel> UndergrowthModels;
+typedef Urho3D::HashMap<unsigned, UndergrowthModels> UndergrowthModelsByTerraintype;
+typedef Urho3D::HashMap<StrNStr, PosNRots> UndergrowthPlacements;
 
 }
 

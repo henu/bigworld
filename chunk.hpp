@@ -3,6 +3,7 @@
 
 #include "types.hpp"
 
+#include "../urhoextras/modelcombiner.hpp"
 #include "../urhoextras/triangle.hpp"
 
 #include <Urho3D/Container/HashMap.h>
@@ -73,7 +74,21 @@ public:
 
 	inline uint16_t getLowestHeight() const { return lowest_height; }
 
+	// Try to create/destroy undergrowth. Returns true if successful.
+	// Both functions can be called even when the process is ready.
+	// These should only be called from ChunkWorld.
+	bool createUndergrowth();
+	bool destroyUndergrowth();
+
 private:
+
+	// Undergrowth states
+	static unsigned char const UGSTATE_NOT_INITIALIZED = 0;
+	static unsigned char const UGSTATE_PLACING = 1;
+	static unsigned char const UGSTATE_LOADING_RESOURCES = 2;
+	static unsigned char const UGSTATE_COMBINING = 3;
+	static unsigned char const UGSTATE_READY = 4;
+	static unsigned char const UGSTATE_STOP_PLACING = 5;
 
 	typedef Urho3D::HashMap<uint8_t, Urho3D::SharedPtr<Urho3D::Model> > LodCache;
 
@@ -102,10 +117,19 @@ private:
 	uint8_t task_lod;
 	Urho3D::SharedPtr<Urho3D::Material> task_mat;
 
+	volatile unsigned char undergrowth_state;
+	BigWorld::Corners undergrowth_corners;
+	Urho3D::SharedPtr<Urho3D::WorkItem> undergrowth_placer_wi;
+	Urho3D::SharedPtr<UrhoExtras::ModelCombiner> undergrowth_combiner;
+	UndergrowthPlacements undergrowth_places;
+	Urho3D::Node* undergrowth_node;
+
 	// Return true if all task results were used succesfully.
 	bool storeTaskResultsToLodCache();
 
 	void updateLowestHeight();
+
+	static void undergrowthPlacer(Urho3D::WorkItem const* wi, unsigned thread_i);
 };
 
 }

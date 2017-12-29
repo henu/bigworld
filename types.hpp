@@ -293,12 +293,7 @@ struct LodBuildingTaskData : public Urho3D::RefCounted
 
 typedef Urho3D::Pair<Urho3D::String, Urho3D::String> StrNStr;
 
-struct PosNRot
-{
-	Urho3D::Vector3 pos;
-	Urho3D::Quaternion rot;
-};
-typedef Urho3D::PODVector<PosNRot> PosNRots;
+typedef Urho3D::PODVector<Urho3D::Matrix4> Transforms;
 
 // Undergrowth stuff
 struct UndergrowthModel
@@ -306,10 +301,12 @@ struct UndergrowthModel
 	Urho3D::String model;
 	Urho3D::String material;
 	bool follow_ground_angle;
+	float min_scale;
+	float max_scale;
 };
 typedef Urho3D::Vector<UndergrowthModel> UndergrowthModels;
 typedef Urho3D::HashMap<unsigned, UndergrowthModels> UndergrowthModelsByTerraintype;
-typedef Urho3D::HashMap<StrNStr, PosNRots> UndergrowthPlacements;
+typedef Urho3D::HashMap<StrNStr, Transforms> UndergrowthPlacements;
 
 }
 

@@ -343,8 +343,8 @@ bool Chunk::createUndergrowth()
 		for (UndergrowthPlacements::ConstIterator i = undergrowth_places.Begin(); i != undergrowth_places.End(); ++ i) {
 			Urho3D::Model* model = resources->GetResource<Urho3D::Model>(i->first_.first_);
 			Urho3D::Material* mat = resources->GetResource<Urho3D::Material>(i->first_.second_);
-			for (PosNRot const& pos_n_rot : i->second_) {
-				undergrowth_combiner->AddModel(model, mat, pos_n_rot.pos, pos_n_rot.rot);
+			for (Urho3D::Matrix4 const& transf : i->second_) {
+				undergrowth_combiner->AddModel(model, mat, transf);
 			}
 		}
 
@@ -602,21 +602,30 @@ UrhoExtras::Random rnd(rand());
 
 				float height = chunk->world->getHeightFromCorners(c_sw, c_nw, c_ne, c_se, sqr_pos);
 
-				PosNRot pos_n_rot;
-				pos_n_rot.pos = Urho3D::Vector3(
+				Urho3D::Vector3 ug_pos = Urho3D::Vector3(
 					(x + sqr_pos.x_) * SQUARE_WIDTH - CHUNK_WIDTH_F_HALF,
 					height,
 					(y + sqr_pos.y_) * SQUARE_WIDTH - CHUNK_WIDTH_F_HALF
 				);
-				pos_n_rot.rot = Urho3D::Quaternion(yaw_angle, Urho3D::Vector3::UP);
+				Urho3D::Quaternion ug_rot = Urho3D::Quaternion(yaw_angle, Urho3D::Vector3::UP);
 				if (ttype_ug.follow_ground_angle) {
 					Urho3D::Vector3 normal = chunk->world->getNormalFromCorners(c_sw, c_nw, c_ne, c_se, sqr_pos);
 					Urho3D::Vector2 normal_xz(normal.x_, normal.z_);
 					float follow_yaw = UrhoExtras::getAngle(normal_xz);
 					float follow_pitch = UrhoExtras::getAngle(normal_xz.Length(), normal.y_);
-					pos_n_rot.rot = Urho3D::Quaternion(follow_yaw, Urho3D::Vector3::UP) * Urho3D::Quaternion(follow_pitch, Urho3D::Vector3::RIGHT) * pos_n_rot.rot;
+					ug_rot = Urho3D::Quaternion(follow_yaw, Urho3D::Vector3::UP) * Urho3D::Quaternion(follow_pitch, Urho3D::Vector3::RIGHT) * ug_rot;
 				}
-				chunk->undergrowth_places[StrNStr(ttype_ug.model, ttype_ug.material)].Push(pos_n_rot);
+				float ug_scale = rnd.randomFloatRange(ttype_ug.min_scale, ttype_ug.max_scale);
+
+				// Combine position, rotation and scaling
+				Urho3D::Matrix4 ug_transf_scale;
+				ug_transf_scale.SetScale(ug_scale);
+				Urho3D::Matrix4 ug_transf;
+				ug_transf.SetRotation(ug_rot.RotationMatrix());
+				ug_transf.SetTranslation(ug_pos);
+				ug_transf = ug_transf * ug_transf_scale;
+
+				chunk->undergrowth_places[StrNStr(ttype_ug.model, ttype_ug.material)].Push(ug_transf);
 			}
 			++ ofs_sw;
 		}

@@ -53,13 +53,15 @@ void ChunkWorld::addTerrainTexture(Urho3D::String const& name)
 	texs_names.Push(name);
 }
 
-void ChunkWorld::addUndergrowthModel(unsigned terraintype, Urho3D::String const& model, Urho3D::String const& material, bool follow_ground_angle)
+void ChunkWorld::addUndergrowthModel(unsigned terraintype, Urho3D::String const& model, Urho3D::String const& material, bool follow_ground_angle, float min_scale, float max_scale)
 {
-	UndergrowthModel ug;
-	ug.model = model;
-	ug.material = material;
-	ug.follow_ground_angle = follow_ground_angle;
-	ugmodels[terraintype].Push(ug);
+	UndergrowthModel ugmodel;
+	ugmodel.model = model;
+	ugmodel.material = material;
+	ugmodel.follow_ground_angle = follow_ground_angle;
+	ugmodel.min_scale = min_scale;
+	ugmodel.max_scale = max_scale;
+	ugmodels[terraintype].Push(ugmodel);
 }
 
 Camera* ChunkWorld::setUpCamera(Urho3D::IntVector2 const& chunk_pos, unsigned baseheight, Urho3D::Vector3 const& pos, float yaw, float pitch, float roll, unsigned viewdistance_in_chunks)

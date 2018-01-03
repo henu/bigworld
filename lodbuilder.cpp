@@ -7,6 +7,16 @@
 namespace BigWorld
 {
 
+inline void pushV2(Urho3D::PODVector<char>& buf, Urho3D::Vector2 const& v)
+{
+	buf.Insert(buf.End(), (char*)v.Data(), (char*)v.Data() + sizeof(float) * 2);
+}
+
+inline void pushV3(Urho3D::PODVector<char>& buf, Urho3D::Vector3 const& v)
+{
+	buf.Insert(buf.End(), (char*)v.Data(), (char*)v.Data() + sizeof(float) * 3);
+}
+
 Urho3D::SharedPtr<Urho3D::Image> calculateTerraintypeImage(TTypes& result_used_ttypes, Urho3D::Context* context, Corners const& corners, unsigned chunk_width)
 {
 	// Precalculate some stuff
@@ -115,8 +125,18 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 	unsigned const CHUNK_W1 = data->chunk_width + 1;
 	unsigned const CHUNK_W3 = data->chunk_width + 3;
 	float const CHUNK_WF = data->chunk_width * data->sqr_width;
-	unsigned const V2_SIZE = sizeof(float) * 2;
-	unsigned const V3_SIZE = sizeof(float) * 3;
+	float const CHUNK_WF_HALF = CHUNK_WF / 2;
+	float const HEIGHTSTEP = data->heightstep;
+	float const OCCLUDER_EDGE_HEIGHT = CHUNK_WF * 2;
+
+	// Prepare corners of occluder geometry. Occluder is a very simple shape,
+	// that is based only on heights of corners. It will be lowered according
+	// to vertices, so it doesn't cover visible areas.
+	float occ_h_sw = (int(data->corners[CHUNK_W3 + 1].height) - int(data->baseheight)) * HEIGHTSTEP;
+	float occ_h_se = (int(data->corners[CHUNK_W3 + 1 + CHUNK_W].height) - int(data->baseheight)) * HEIGHTSTEP;
+	float occ_h_nw = (int(data->corners[CHUNK_W3 * (1 + CHUNK_W) + 1].height) - int(data->baseheight)) * HEIGHTSTEP;
+	float occ_h_ne = (int(data->corners[CHUNK_W3 * (1 + CHUNK_W) + 1 + CHUNK_W].height) - int(data->baseheight)) * HEIGHTSTEP;
+	float occluder_lowering = 0;
 
 	// Set up elements
 	data->vrts_elems.Push(Urho3D::VertexElement(Urho3D::TYPE_VECTOR3, Urho3D::SEM_POSITION));
@@ -132,9 +152,9 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 		for (unsigned x = 0; x < CHUNK_W3; ++ x) {
 			uint16_t height = data->corners[ofs].height;
 			Urho3D::Vector3 pos(
-				(int(x) - 1) * data->sqr_width - CHUNK_WF / 2,
-				(int(height) - int(data->baseheight)) * data->heightstep,
-				(int(y) - 1) * data->sqr_width - CHUNK_WF / 2
+				(int(x) - 1) * data->sqr_width - CHUNK_WF_HALF,
+				(int(height) - int(data->baseheight)) * HEIGHTSTEP,
+				(int(y) - 1) * data->sqr_width - CHUNK_WF_HALF
 			);
 			poss.Push(pos);
 
@@ -216,11 +236,22 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 		for (unsigned x = 0; x < CHUNK_W1; x += step) {
 			Urho3D::Vector3 const& pos = poss[ofs];
 			Urho3D::Vector3 const& normal = nrms[ofs];
-			Urho3D::Vector3 const& uv = uvs[ofs];
-			data->vrts_data.Insert(data->vrts_data.End(), (char*)pos.Data(), (char*)pos.Data() + V3_SIZE);
-			data->vrts_data.Insert(data->vrts_data.End(), (char*)normal.Data(), (char*)normal.Data() + V3_SIZE);
-			data->vrts_data.Insert(data->vrts_data.End(), (char*)uv.Data(), (char*)uv.Data() + V2_SIZE);
+			Urho3D::Vector2 const& uv = uvs[ofs];
+			pushV3(data->vrts_data, pos);
+			pushV3(data->vrts_data, normal);
+			pushV2(data->vrts_data, uv);
 			ofs += step;
+
+			// Use position to check if occluder should be lowered
+			float xm = float(x) / CHUNK_W;
+			float ym = float(y) / CHUNK_W;
+			float h;
+			if (x < y) {
+				h = Urho3D::Lerp(Urho3D::Lerp(occ_h_sw, occ_h_se, xm), occ_h_ne, ym);
+			} else {
+				h = Urho3D::Lerp(occ_h_sw, Urho3D::Lerp(occ_h_nw, occ_h_ne, xm), ym);
+			}
+			occluder_lowering = Urho3D::Max(occluder_lowering, h - pos.y_);
 		}
 	}
 
@@ -276,10 +307,10 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 				unsigned i_center = data->vrts_data.Size() / VRT_SIZE;
 				Urho3D::Vector3 const& center_pos = poss[i_center_ofs];
 				Urho3D::Vector3 const& center_nrm = nrms[i_center_ofs];
-				Urho3D::Vector3 const& center_uv = uvs[i_center_ofs];
-				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_pos.Data(), (char*)center_pos.Data() + V3_SIZE);
-				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_nrm.Data(), (char*)center_nrm.Data() + V3_SIZE);
-				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_uv.Data(), (char*)center_uv.Data() + V2_SIZE);
+				Urho3D::Vector2 const& center_uv = uvs[i_center_ofs];
+				pushV3(data->vrts_data, center_pos);
+				pushV3(data->vrts_data, center_nrm);
+				pushV2(data->vrts_data, center_uv);
 				// Create new triangle
 				data->idxs_data.Push(i_begin);
 				data->idxs_data.Push(i_end);
@@ -301,10 +332,10 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 				unsigned i_center = data->vrts_data.Size() / VRT_SIZE;
 				Urho3D::Vector3 const& center_pos = poss[i_center_ofs];
 				Urho3D::Vector3 const& center_nrm = nrms[i_center_ofs];
-				Urho3D::Vector3 const& center_uv = uvs[i_center_ofs];
-				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_pos.Data(), (char*)center_pos.Data() + V3_SIZE);
-				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_nrm.Data(), (char*)center_nrm.Data() + V3_SIZE);
-				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_uv.Data(), (char*)center_uv.Data() + V2_SIZE);
+				Urho3D::Vector2 const& center_uv = uvs[i_center_ofs];
+				pushV3(data->vrts_data, center_pos);
+				pushV3(data->vrts_data, center_nrm);
+				pushV2(data->vrts_data, center_uv);
 				// Create new triangle
 				data->idxs_data.Push(i_begin);
 				data->idxs_data.Push(i_end);
@@ -326,10 +357,10 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 				unsigned i_center = data->vrts_data.Size() / VRT_SIZE;
 				Urho3D::Vector3 const& center_pos = poss[i_center_ofs];
 				Urho3D::Vector3 const& center_nrm = nrms[i_center_ofs];
-				Urho3D::Vector3 const& center_uv = uvs[i_center_ofs];
-				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_pos.Data(), (char*)center_pos.Data() + V3_SIZE);
-				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_nrm.Data(), (char*)center_nrm.Data() + V3_SIZE);
-				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_uv.Data(), (char*)center_uv.Data() + V2_SIZE);
+				Urho3D::Vector2 const& center_uv = uvs[i_center_ofs];
+				pushV3(data->vrts_data, center_pos);
+				pushV3(data->vrts_data, center_nrm);
+				pushV2(data->vrts_data, center_uv);
 				// Create new triangle
 				data->idxs_data.Push(i_begin);
 				data->idxs_data.Push(i_end);
@@ -351,10 +382,10 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 				unsigned i_center = data->vrts_data.Size() / VRT_SIZE;
 				Urho3D::Vector3 const& center_pos = poss[i_center_ofs];
 				Urho3D::Vector3 const& center_nrm = nrms[i_center_ofs];
-				Urho3D::Vector3 const& center_uv = uvs[i_center_ofs];
-				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_pos.Data(), (char*)center_pos.Data() + V3_SIZE);
-				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_nrm.Data(), (char*)center_nrm.Data() + V3_SIZE);
-				data->vrts_data.Insert(data->vrts_data.End(), (char*)center_uv.Data(), (char*)center_uv.Data() + V2_SIZE);
+				Urho3D::Vector2 const& center_uv = uvs[i_center_ofs];
+				pushV3(data->vrts_data, center_pos);
+				pushV3(data->vrts_data, center_nrm);
+				pushV2(data->vrts_data, center_uv);
 				// Create new triangle
 				data->idxs_data.Push(i_begin);
 				data->idxs_data.Push(i_end);
@@ -363,6 +394,24 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 			ofs -= step * CHUNK_W3;
 		}
 	}
+
+	// Construct occluder shape
+	Urho3D::Vector3 occ_pos_swu(-CHUNK_WF_HALF, occ_h_sw - occluder_lowering, -CHUNK_WF_HALF);
+	Urho3D::Vector3 occ_pos_nwu(-CHUNK_WF_HALF, occ_h_nw - occluder_lowering, CHUNK_WF_HALF);
+	Urho3D::Vector3 occ_pos_neu(CHUNK_WF_HALF, occ_h_ne - occluder_lowering, CHUNK_WF_HALF);
+	Urho3D::Vector3 occ_pos_seu(CHUNK_WF_HALF, occ_h_se - occluder_lowering, -CHUNK_WF_HALF);
+	Urho3D::Vector3 occ_pos_swd = occ_pos_swu - Urho3D::Vector3::UP * OCCLUDER_EDGE_HEIGHT;
+	Urho3D::Vector3 occ_pos_nwd = occ_pos_nwu - Urho3D::Vector3::UP * OCCLUDER_EDGE_HEIGHT;
+	Urho3D::Vector3 occ_pos_ned = occ_pos_neu - Urho3D::Vector3::UP * OCCLUDER_EDGE_HEIGHT;
+	Urho3D::Vector3 occ_pos_sed = occ_pos_seu - Urho3D::Vector3::UP * OCCLUDER_EDGE_HEIGHT;
+	pushV3(data->occ_vrts_data, occ_pos_swu);
+	pushV3(data->occ_vrts_data, occ_pos_nwu);
+	pushV3(data->occ_vrts_data, occ_pos_neu);
+	pushV3(data->occ_vrts_data, occ_pos_seu);
+	pushV3(data->occ_vrts_data, occ_pos_swd);
+	pushV3(data->occ_vrts_data, occ_pos_nwd);
+	pushV3(data->occ_vrts_data, occ_pos_ned);
+	pushV3(data->occ_vrts_data, occ_pos_sed);
 }
 
 }

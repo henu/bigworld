@@ -289,6 +289,8 @@ struct LodBuildingTaskData : public Urho3D::RefCounted
 	// Outout if ttype image is calculated
 	TTypes used_ttypes;
 	Urho3D::SharedPtr<Urho3D::Image> ttype_image;
+	// Occluder shape
+	Urho3D::PODVector<char> occ_vrts_data;
 };
 
 typedef Urho3D::Pair<Urho3D::String, Urho3D::String> StrNStr;

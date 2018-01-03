@@ -478,6 +478,7 @@ void ChunkWorld::handleBeginFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 	}
 
 	if (water_refl) {
+// TODO: Update is not required on every frame! However aspect is good to update in case size has changed!
 		updateWaterReflection();
 	}
 
@@ -545,7 +546,7 @@ void ChunkWorld::updateWaterReflection()
 	// Create a mathematical plane to represent the water in calculations
 	Urho3D::Plane water_refl_plane = Urho3D::Plane(water_node->GetWorldRotation() * Urho3D::Vector3::UP, water_node->GetWorldPosition());
 	// Create a downward biased plane for reflection view clipping. Biasing is necessary to avoid too aggressive clipping
-	Urho3D::Plane water_clip_plane = Urho3D::Plane(water_node->GetWorldRotation() * Urho3D::Vector3::UP, water_node->GetWorldPosition() + Urho3D::Vector3::DOWN);
+	Urho3D::Plane water_clip_plane = Urho3D::Plane(water_node->GetWorldRotation() * Urho3D::Vector3::UP, water_node->GetWorldPosition() + Urho3D::Vector3::DOWN * 0.1);
 
 	water_refl_camera->SetReflectionPlane(water_refl_plane);
 	water_refl_camera->SetClipPlane(water_clip_plane);

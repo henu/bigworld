@@ -179,7 +179,7 @@ void Chunk::show(Urho3D::IntVector2 const& rel_pos, unsigned origin_height, uint
 		active_model = node->CreateComponent<Urho3D::StaticModel>();
 		active_model->SetModel(lodcache[lod]);
 		active_model->SetMaterial(matcache);
-		active_model->SetOcclusionLodLevel(1);
+		active_model->SetOcclusionLodLevel(lodcache[lod]->GetNumGeometryLodLevels(0) - 1);
 		active_model->SetOccludee(true);
 		active_model->SetOccluder(true);
 	}
@@ -187,7 +187,7 @@ void Chunk::show(Urho3D::IntVector2 const& rel_pos, unsigned origin_height, uint
 	else if (active_model->GetModel() != lodcache[lod] || active_model->GetMaterial() != matcache) {
 		active_model->SetModel(lodcache[lod]);
 		active_model->SetMaterial(matcache);
-		active_model->SetOcclusionLodLevel(1);
+		active_model->SetOcclusionLodLevel(lodcache[lod]->GetNumGeometryLodLevels(0) - 1);
 		active_model->SetOccludee(true);
 		active_model->SetOccluder(true);
 	}
@@ -468,6 +468,7 @@ bool Chunk::storeTaskResultsToLodCache()
 	// Material is ready. Now construct model.
 	// Convert raw data from task to real VertexBuffer
 	Urho3D::SharedPtr<Urho3D::VertexBuffer> new_vb(new Urho3D::VertexBuffer(context_));
+	new_vb->SetShadowed(!task_data->occ_shape_available);
 	if (!new_vb->SetSize(task_data->vrts_data.Size() / Urho3D::VertexBuffer::GetVertexSize(task_data->vrts_elems), task_data->vrts_elems)) {
 		throw std::runtime_error("Unable to set VertexBuffer size!");
 	}
@@ -477,6 +478,7 @@ bool Chunk::storeTaskResultsToLodCache()
 
 	// Convert raw data from task to real IndexBuffer
 	Urho3D::SharedPtr<Urho3D::IndexBuffer> new_ib(new Urho3D::IndexBuffer(context_));
+	new_ib->SetShadowed(!task_data->occ_shape_available);
 // TODO: Use small indices if possible!
 	if (!new_ib->SetSize(task_data->idxs_data.Size(), true)) {
 		throw std::runtime_error("Unable to set IndexBuffer size!");
@@ -495,84 +497,52 @@ bool Chunk::storeTaskResultsToLodCache()
 		throw std::runtime_error("Unable to set Geometry draw range!");
 	}
 
-	// Create occluder geometry
-	Urho3D::SharedPtr<Urho3D::VertexBuffer> occ_vbuf(new Urho3D::VertexBuffer(context_));
-	occ_vbuf->SetShadowed(true);
-	Urho3D::PODVector<Urho3D::VertexElement> occ_vrts_elems;
-	occ_vrts_elems.Push(Urho3D::VertexElement(Urho3D::TYPE_VECTOR3, Urho3D::SEM_POSITION));
-	// 8 corners
-	if (!occ_vbuf->SetSize(8 * 3 * sizeof(float), occ_vrts_elems)) {
-		throw std::runtime_error("Unable to set occluder VertexBuffer size!");
+	// Create occluder geometry, if one is available
+	Urho3D::SharedPtr<Urho3D::Geometry> occ_geom;
+	if (task_data->occ_shape_available) {
+		Urho3D::SharedPtr<Urho3D::VertexBuffer> occ_vbuf(new Urho3D::VertexBuffer(context_));
+		occ_vbuf->SetShadowed(true);
+		Urho3D::PODVector<Urho3D::VertexElement> occ_vrts_elems;
+		occ_vrts_elems.Push(Urho3D::VertexElement(Urho3D::TYPE_VECTOR3, Urho3D::SEM_POSITION));
+		if (!occ_vbuf->SetSize(task_data->occ_vrts_data.Size() / Urho3D::VertexBuffer::GetVertexSize(occ_vrts_elems), occ_vrts_elems)) {
+			throw std::runtime_error("Unable to set occluder VertexBuffer size!");
+		}
+		if (!occ_vbuf->SetData((void*)task_data->occ_vrts_data.Buffer())) {
+			throw std::runtime_error("Unable to set occluder VertexBuffer data!");
+		}
+		Urho3D::SharedPtr<Urho3D::IndexBuffer> occ_ibuf(new Urho3D::IndexBuffer(context_));
+		occ_ibuf->SetShadowed(true);
+// TODO: Use small indices if possible!
+		if (!occ_ibuf->SetSize(task_data->occ_idxs_data.Size(), true)) {
+			throw std::runtime_error("Unable to set occluder IndexBuffer size!");
+		}
+		if (!occ_ibuf->SetData((void*)task_data->occ_idxs_data.Buffer())) {
+			throw std::runtime_error("Unable to set occluder IndexBuffer data!");
+		}
+		occ_geom = new Urho3D::Geometry(context_);
+		if (!occ_geom->SetVertexBuffer(0, occ_vbuf)) {
+			throw std::runtime_error("Unable to set occluder Geometry VertexBuffer!");
+		}
+		occ_geom->SetIndexBuffer(occ_ibuf);
+		if (!occ_geom->SetDrawRange(Urho3D::TRIANGLE_LIST, 0, task_data->occ_idxs_data.Size(), false)) {
+			throw std::runtime_error("Unable to set occluder Geometry draw range!");
+		}
+		occ_geom->SetLodDistance(Urho3D::M_LARGE_VALUE);
 	}
-	if (!occ_vbuf->SetData((void*)task_data->occ_vrts_data.Buffer())) {
-		throw std::runtime_error("Unable to set occluder VertexBuffer data!");
-	}
-	Urho3D::SharedPtr<Urho3D::IndexBuffer> occ_ibuf(new Urho3D::IndexBuffer(context_));
-	occ_ibuf->SetShadowed(true);
-	// 5 sides, two triangles per side, three corners per triangle
-	if (!occ_ibuf->SetSize(5 * 2 * 3, false)) {
-		throw std::runtime_error("Unable to set occluder IndexBuffer size!");
-	}
-	Urho3D::PODVector<uint16_t> occ_idxs_data;
-	// Top
-	occ_idxs_data.Push(0);
-	occ_idxs_data.Push(1);
-	occ_idxs_data.Push(2);
-	occ_idxs_data.Push(0);
-	occ_idxs_data.Push(2);
-	occ_idxs_data.Push(3);
-	// South edge
-	occ_idxs_data.Push(4);
-	occ_idxs_data.Push(0);
-	occ_idxs_data.Push(3);
-	occ_idxs_data.Push(4);
-	occ_idxs_data.Push(3);
-	occ_idxs_data.Push(7);
-	// West edge
-	occ_idxs_data.Push(5);
-	occ_idxs_data.Push(1);
-	occ_idxs_data.Push(0);
-	occ_idxs_data.Push(5);
-	occ_idxs_data.Push(0);
-	occ_idxs_data.Push(4);
-	// North edge
-	occ_idxs_data.Push(6);
-	occ_idxs_data.Push(2);
-	occ_idxs_data.Push(1);
-	occ_idxs_data.Push(6);
-	occ_idxs_data.Push(1);
-	occ_idxs_data.Push(5);
-	// East edge
-	occ_idxs_data.Push(7);
-	occ_idxs_data.Push(3);
-	occ_idxs_data.Push(2);
-	occ_idxs_data.Push(7);
-	occ_idxs_data.Push(2);
-	occ_idxs_data.Push(6);
-	if (!occ_ibuf->SetData((void*)occ_idxs_data.Buffer())) {
-		throw std::runtime_error("Unable to set occluder IndexBuffer data!");
-	}
-	Urho3D::SharedPtr<Urho3D::Geometry> occ_geom(new Urho3D::Geometry(context_));
-	if (!occ_geom->SetVertexBuffer(0, occ_vbuf)) {
-		throw std::runtime_error("Unable to set occluder Geometry VertexBuffer!");
-	}
-	occ_geom->SetIndexBuffer(occ_ibuf);
-	if (!occ_geom->SetDrawRange(Urho3D::TRIANGLE_LIST, 0, 5 * 2 * 3, false)) {
-		throw std::runtime_error("Unable to set occluder Geometry draw range!");
-	}
-	occ_geom->SetLodDistance(Urho3D::M_LARGE_VALUE);
 
 	// Create model the data from task
 	Urho3D::SharedPtr<Urho3D::Model> new_model(new Urho3D::Model(context_));
 	new_model->SetNumGeometries(1);
-	if (!new_model->SetNumGeometryLodLevels(0, 2)) {
+	if (!new_model->SetNumGeometryLodLevels(0, task_data->occ_shape_available ? 2 : 1)) {
 		throw std::runtime_error("Unable to set number of lod levels of Model!");
 	}
 	if (!new_model->SetGeometry(0, 0, new_geom)) {
 		throw std::runtime_error("Unable to set Model Geometry!");
 	}
-	if (!new_model->SetGeometry(0, 1, occ_geom)) {
-		throw std::runtime_error("Unable to set Model occluder Geometry!");
+	if (task_data->occ_shape_available) {
+		if (!new_model->SetGeometry(0, 1, occ_geom)) {
+			throw std::runtime_error("Unable to set Model occluder Geometry!");
+		}
 	}
 	new_model->SetBoundingBox(task_data->boundingbox);
 

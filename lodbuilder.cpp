@@ -121,13 +121,13 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 	}
 
 	// Precalculate some stuff
+	float const SQR_W = data->sqr_width;
 	unsigned const CHUNK_W = data->chunk_width;
 	unsigned const CHUNK_W1 = data->chunk_width + 1;
 	unsigned const CHUNK_W3 = data->chunk_width + 3;
-	float const CHUNK_WF = data->chunk_width * data->sqr_width;
+	float const CHUNK_WF = data->chunk_width * SQR_W;
 	float const CHUNK_WF_HALF = CHUNK_WF / 2;
 	float const HEIGHTSTEP = data->heightstep;
-	float const OCCLUDER_EDGE_HEIGHT = CHUNK_WF * 2;
 
 	// Prepare corners of occluder geometry. Occluder is a very simple shape,
 	// that is based only on heights of corners. It will be lowered according
@@ -152,9 +152,9 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 		for (unsigned x = 0; x < CHUNK_W3; ++ x) {
 			uint16_t height = data->corners[ofs].height;
 			Urho3D::Vector3 pos(
-				(int(x) - 1) * data->sqr_width - CHUNK_WF_HALF,
+				(int(x) - 1) * SQR_W - CHUNK_WF_HALF,
 				(int(height) - int(data->baseheight)) * HEIGHTSTEP,
-				(int(y) - 1) * data->sqr_width - CHUNK_WF_HALF
+				(int(y) - 1) * SQR_W - CHUNK_WF_HALF
 			);
 			poss.Push(pos);
 
@@ -395,23 +395,76 @@ void buildLod(Urho3D::WorkItem const* item, unsigned threadIndex)
 		}
 	}
 
-	// Construct occluder shape
-	Urho3D::Vector3 occ_pos_swu(-CHUNK_WF_HALF, occ_h_sw - occluder_lowering, -CHUNK_WF_HALF);
-	Urho3D::Vector3 occ_pos_nwu(-CHUNK_WF_HALF, occ_h_nw - occluder_lowering, CHUNK_WF_HALF);
-	Urho3D::Vector3 occ_pos_neu(CHUNK_WF_HALF, occ_h_ne - occluder_lowering, CHUNK_WF_HALF);
-	Urho3D::Vector3 occ_pos_seu(CHUNK_WF_HALF, occ_h_se - occluder_lowering, -CHUNK_WF_HALF);
-	Urho3D::Vector3 occ_pos_swd = occ_pos_swu - Urho3D::Vector3::UP * OCCLUDER_EDGE_HEIGHT;
-	Urho3D::Vector3 occ_pos_nwd = occ_pos_nwu - Urho3D::Vector3::UP * OCCLUDER_EDGE_HEIGHT;
-	Urho3D::Vector3 occ_pos_ned = occ_pos_neu - Urho3D::Vector3::UP * OCCLUDER_EDGE_HEIGHT;
-	Urho3D::Vector3 occ_pos_sed = occ_pos_seu - Urho3D::Vector3::UP * OCCLUDER_EDGE_HEIGHT;
-	pushV3(data->occ_vrts_data, occ_pos_swu);
-	pushV3(data->occ_vrts_data, occ_pos_nwu);
-	pushV3(data->occ_vrts_data, occ_pos_neu);
-	pushV3(data->occ_vrts_data, occ_pos_seu);
-	pushV3(data->occ_vrts_data, occ_pos_swd);
-	pushV3(data->occ_vrts_data, occ_pos_nwd);
-	pushV3(data->occ_vrts_data, occ_pos_ned);
-	pushV3(data->occ_vrts_data, occ_pos_sed);
+	// Construct occluder shape. It will be a lower detail version of the terrain.
+	unsigned occ_step = CHUNK_W / 4;
+	unsigned occ_width = CHUNK_W / occ_step + 1;
+
+	// If detail is same or higher that the visible shape, then use visible shape.
+	if (occ_step <= step) {
+		data->occ_shape_available = false;
+		return;
+	}
+
+	data->occ_shape_available = true;
+
+	// Construct the vector of heights
+	Urho3D::PODVector<float> occ_heights;
+	occ_heights.Clear();
+	for (unsigned y = 0; y <= CHUNK_W; y += occ_step) {
+		unsigned ofs = 1 + (y + 1) * CHUNK_W3;
+		for (unsigned x = 0; x <= CHUNK_W; x += occ_step) {
+			occ_heights.Push(poss[ofs].y_);
+			ofs += occ_step;
+		}
+	}
+
+	// Convert vector of positions into occluder shape
+	ofs = 0;
+	for (unsigned y = 0; y < occ_width; ++ y) {
+		for (unsigned x = 0; x < occ_width; ++ x) {
+			Urho3D::Vector3 pos(
+				x * occ_step * SQR_W - CHUNK_WF_HALF,
+				occ_heights[ofs],
+				y * occ_step * SQR_W - CHUNK_WF_HALF
+			);
+			pushV3(data->occ_vrts_data, pos);
+			++ ofs;
+		}
+	}
+
+	ofs = 0;
+	for (unsigned y = 0; y < occ_width - 1; ++ y) {
+		for (unsigned x = 0; x < occ_width - 1; ++ x) {
+			unsigned i_sw = ofs;
+			unsigned i_nw = ofs + occ_width;
+			unsigned i_ne = ofs + occ_width + 1;
+			unsigned i_se = ofs + 1;
+
+			float h_sw = occ_heights[i_sw];
+			float h_nw = occ_heights[i_nw];
+			float h_ne = occ_heights[i_ne];
+			float h_se = occ_heights[i_se];
+
+			if (fabs(h_sw - h_ne) < fabs(h_se - h_nw)) {
+				data->occ_idxs_data.Push(i_sw);
+				data->occ_idxs_data.Push(i_nw);
+				data->occ_idxs_data.Push(i_ne);
+				data->occ_idxs_data.Push(i_sw);
+				data->occ_idxs_data.Push(i_ne);
+				data->occ_idxs_data.Push(i_se);
+			} else {
+				data->occ_idxs_data.Push(i_nw);
+				data->occ_idxs_data.Push(i_ne);
+				data->occ_idxs_data.Push(i_se);
+				data->occ_idxs_data.Push(i_nw);
+				data->occ_idxs_data.Push(i_se);
+				data->occ_idxs_data.Push(i_sw);
+			}
+
+			++ ofs;
+		}
+		++ ofs;
+	}
 }
 
 }

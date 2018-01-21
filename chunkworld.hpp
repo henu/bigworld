@@ -35,6 +35,7 @@ public:
 	);
 
 	void addTerrainTexture(Urho3D::String const& name);
+	inline unsigned getNumOfTerrainTextures() const { return texs_names.Size(); }
 
 	void addUndergrowthModel(unsigned terraintype, Urho3D::String const& model, Urho3D::String const& material, bool follow_ground_angle, float min_scale = 1, float max_scale = 1);
 	inline UndergrowthModelsByTerraintype getUndergrowthModelsByTerraintype() const { return ugmodels; }

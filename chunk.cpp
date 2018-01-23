@@ -450,10 +450,11 @@ bool Chunk::storeTaskResultsToLodCache()
 			Urho3D::Technique* tech = resources->GetResource<Urho3D::Technique>("Techniques/TerrainBlend4.xml");
 			mat->SetTechnique(0, tech);
 		} else {
-			Urho3D::Technique* tech = resources->GetResource<Urho3D::Technique>("Techniques/TerrainBlend.xml");
+			Urho3D::Technique* tech = resources->GetResource<Urho3D::Technique>("Techniques/TerrainBlend3.xml");
 			mat->SetTechnique(0, tech);
 		}
 		mat->SetShaderParameter("DetailTiling", Urho3D::Variant(Urho3D::Vector2::ONE * world->getTerrainTextureRepeats()));
+		mat->SetShaderParameter("WeightMapWidth", Urho3D::Variant(world->getChunkWidth() + 1));
 		blend_tex = new Urho3D::Texture2D(context_);
 		blend_tex->SetAddressMode(Urho3D::COORD_U, Urho3D::ADDRESS_CLAMP);
 		blend_tex->SetAddressMode(Urho3D::COORD_V, Urho3D::ADDRESS_CLAMP);
